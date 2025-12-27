@@ -363,27 +363,11 @@
                 if (data.position) {
                     console.log('Position data:', data.position);
                     
-                    // Update QRL balance from position data (source of truth)
-                    if (data.position.qrl_balance !== undefined && data.position.qrl_balance !== null) {
-                        const qrlBalance = parseFloat(data.position.qrl_balance);
-                        if (!isNaN(qrlBalance)) {
-                            document.getElementById('qrl-balance').textContent = qrlBalance.toFixed(4);
-                            document.getElementById('qrl-free').textContent = qrlBalance.toFixed(4);
-                            document.getElementById('qrl-locked').textContent = '0.0000';
-                        }
-                    }
+                    // NOTE: Do NOT update balance from Redis position data
+                    // Balance should come from real-time API (/account/balance)
+                    // Redis position data may be stale (only updates when bot runs)
                     
-                    // Update USDT balance from position data (source of truth)
-                    if (data.position.usdt_balance !== undefined && data.position.usdt_balance !== null) {
-                        const usdtBalance = parseFloat(data.position.usdt_balance);
-                        if (!isNaN(usdtBalance)) {
-                            document.getElementById('usdt-balance').textContent = usdtBalance.toFixed(2);
-                            document.getElementById('usdt-free').textContent = usdtBalance.toFixed(2);
-                            document.getElementById('usdt-locked').textContent = '0.00';
-                        }
-                    }
-                    
-                    // Update average cost
+                    // Update average cost (bot-specific analysis)
                     const avgCost = data.position.avg_cost;
                     if (avgCost && avgCost !== '0') {
                         document.getElementById('avg-cost').textContent = parseFloat(avgCost).toFixed(6);
@@ -391,7 +375,7 @@
                         document.getElementById('avg-cost').textContent = 'N/A';
                     }
                     
-                    // Update unrealized PnL
+                    // Update unrealized PnL (bot-specific analysis)
                     const unrealizedPnl = data.position.unrealized_pnl;
                     if (unrealizedPnl !== undefined && unrealizedPnl !== null) {
                         const pnlValue = parseFloat(unrealizedPnl);
@@ -434,19 +418,21 @@
         
         async function refreshData() {
             // Load all data sources
-            const balances = await loadAccountBalance();
-            const price = await loadPrice();
-            const position = await loadStatus();
+            const balances = await loadAccountBalance();  // Real-time API balance (PRIMARY)
+            const price = await loadPrice();               // Current market price
+            const position = await loadStatus();           // Bot analytics only (avg_cost, PnL)
             
-            // Position data is source of truth (bot tracks exact trades)
-            if (position && price && (position.qrl_balance || position.usdt_balance)) {
+            // PRIMARY: Use real-time API balance (most accurate and up-to-date)
+            // API balance reflects all activities (bot trades + manual deposits/withdrawals)
+            if (balances && price) {
+                calculateTotalValue(balances.qrlTotal, balances.usdtTotal, price);
+            }
+            // FALLBACK: Only use Redis position data if API fails
+            // Redis data may be stale (only updates when bot runs)
+            else if (position && price && (position.qrl_balance || position.usdt_balance)) {
                 const qrlBal = parseFloat(position.qrl_balance || 0);
                 const usdtBal = parseFloat(position.usdt_balance || 0);
                 calculateTotalValue(qrlBal, usdtBal, price);
-            }
-            // Only fall back to API balance if position data not available
-            else if (balances && price) {
-                calculateTotalValue(balances.qrlTotal, balances.usdtTotal, price);
             }
         }
         
