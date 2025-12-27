@@ -1,0 +1,32 @@
+# Minimal Cloud Build for qrl-api
+# Build Docker image, push to Container Registry, deploy to Cloud Run
+
+steps:
+  # 1️⃣ Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-southeast1-docker.pkg.dev/qrl-api/qrl-trading-api/qrl-trading-api:latest'
+      - '.'
+
+  # 2️⃣ Push Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-southeast1-docker.pkg.dev/qrl-api/qrl-trading-api/qrl-trading-api:latest'
+
+  # 3️⃣ Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'qrl-trading-api'
+      - '--image=asia-southeast1-docker.pkg.dev/qrl-api/qrl-trading-api/qrl-trading-api:latest'
+      - '--region=asia-southeast1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+
+# Timeout for the entire build
+timeout: 1200s

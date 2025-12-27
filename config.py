@@ -12,8 +12,8 @@ load_dotenv()
 class Config:
     """Application configuration"""
     
-    # Flask settings
-    PORT = int(os.getenv('PORT', '8080'))
+    # Application settings
+    PORT = int(os.getenv('PORT', '8080'))  # Cloud Run provides this automatically
     DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
     
     # Redis settings (Cloud Redis - single URL format)

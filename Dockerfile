@@ -14,11 +14,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set environment variables
-ENV PORT=8080
+# Note: PORT is automatically provided by Cloud Run, no need to set it here
 ENV PYTHONUNBUFFERED=1
 
-# Expose port
+# Expose port (Cloud Run will use the PORT env var it provides)
 EXPOSE 8080
 
-# Run the application with gunicorn for production
-CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 60 main:app
+# Run the application with uvicorn for production
+# Cloud Run will provide the PORT environment variable automatically
+CMD exec uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1

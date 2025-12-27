@@ -351,16 +351,11 @@
 
         <!-- Refresh Info -->
         <div class="refresh-info">
-            <span class="auto-refresh">●</span> 頁面每 30 秒自動刷新 · 最後更新: {{ update_time }}
+            <span class="auto-refresh">●</span> 即時更新 (WebSocket) · 最後更新: {{ update_time }}
             <button class="btn btn-info" onclick="location.reload()" style="margin-left: 20px; padding: 6px 16px; font-size: 12px;">🔄 手動刷新</button>
-        </div>
+    </div>
     </div>
 
-    <script>
-        // Auto refresh every 30 seconds
-        setTimeout(function() {
-            location.reload();
-        }, 30000);
-    </script>
+    <script src="/static/js/websocket.js"></script>
 </body>
 </html>

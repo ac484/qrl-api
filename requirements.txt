@@ -1,11 +1,14 @@
 # Core Trading
-ccxt==4.2.25
+mexc-sdk==1.0.0
+
+# Data processing
 pandas==2.1.4
 numpy==1.26.2
 
 # Web Framework
-flask==3.0.0
-gunicorn==21.2.0
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+websockets==12.0
 
 # Redis
 redis[hiredis]==5.0.1
@@ -15,6 +18,7 @@ python-dotenv==1.0.0
 
 # Logging
 structlog==24.1.0
+python-json-logger==2.0.7
 
 # HTTP
 requests==2.31.0
@@ -24,3 +28,6 @@ pydantic==2.5.3
 
 # JSON
 orjson==3.9.10
+
+# Templates
+jinja2==3.1.3
