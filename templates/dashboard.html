@@ -376,26 +376,6 @@
                     } else {
                         document.getElementById('unrealized-pnl').textContent = 'N/A';
                     }
-                    
-                    // ALWAYS use position data for balances if available
-                    // Position data from bot is the source of truth
-                    if (data.position.qrl_balance) {
-                        const qrlBalance = parseFloat(data.position.qrl_balance);
-                        if (qrlBalance > 0) {
-                            document.getElementById('qrl-balance').textContent = qrlBalance.toFixed(4);
-                            document.getElementById('qrl-free').textContent = qrlBalance.toFixed(4);
-                            document.getElementById('qrl-locked').textContent = '0.0000';
-                        }
-                    }
-                    
-                    if (data.position.usdt_balance) {
-                        const usdtBalance = parseFloat(data.position.usdt_balance);
-                        if (usdtBalance > 0) {
-                            document.getElementById('usdt-balance').textContent = usdtBalance.toFixed(2);
-                            document.getElementById('usdt-free').textContent = usdtBalance.toFixed(2);
-                            document.getElementById('usdt-locked').textContent = '0.00';
-                        }
-                    }
                 }
                 
                 return data.position || {};
@@ -424,20 +404,20 @@
         }
         
         async function refreshData() {
-            // Load all data sources
+            // ALWAYS try to get real-time data from API first
             const balances = await loadAccountBalance();
             const price = await loadPrice();
-            const position = await loadStatus(); // This will override balances with position data if available
+            const position = await loadStatus();
             
-            // Calculate total value - prefer position data as it's bot's source of truth
-            if (position && price && (position.qrl_balance || position.usdt_balance)) {
+            // Use real-time API balance if available (most accurate)
+            if (balances && price) {
+                calculateTotalValue(balances.qrlTotal, balances.usdtTotal, price);
+            }
+            // Only fall back to position data if API call failed
+            else if (position && price && (position.qrl_balance || position.usdt_balance)) {
                 const qrlBal = parseFloat(position.qrl_balance || 0);
                 const usdtBal = parseFloat(position.usdt_balance || 0);
                 calculateTotalValue(qrlBal, usdtBal, price);
-            }
-            // Fallback to account balance if position data not available
-            else if (balances && price) {
-                calculateTotalValue(balances.qrlTotal, balances.usdtTotal, price);
             }
         }
         
