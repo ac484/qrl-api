@@ -1,0 +1,108 @@
+# Cloud Build configuration for QRL Trading Bot API
+# Automatically builds and deploys to Cloud Run
+# 
+# Trigger this build with:
+#   gcloud builds submit --config cloudbuild.yaml
+# Or set up automatic triggers on git push
+
+steps:
+  # Step 1: Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-image'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '-t'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:latest'
+      - '.'
+    timeout: 600s
+
+  # Step 2: Push the Docker image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-image'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
+    waitFor: ['build-image']
+
+  # Step 3: Push the latest tag
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'push-latest'
+    args:
+      - 'push'
+      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:latest'
+    waitFor: ['build-image']
+
+  # Step 4: Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-cloud-run'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
+      - '--region=${_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=${_MEMORY}'
+      - '--max-instances=${_MAX_INSTANCES}'
+      - '--min-instances=${_MIN_INSTANCES}'
+      - '--timeout=${_TIMEOUT}'
+      - '--set-env-vars=REDIS_URL=${_REDIS_URL},TRADING_PAIR=${_TRADING_PAIR},MAX_DAILY_TRADES=${_MAX_DAILY_TRADES}'
+      - '--set-secrets=MEXC_API_KEY=${_MEXC_API_KEY_SECRET}:latest,MEXC_API_SECRET=${_MEXC_API_SECRET_SECRET}:latest'
+    waitFor: ['push-image']
+
+# Substitutions - configure these in Cloud Build trigger or via --substitutions flag
+substitutions:
+  # Required: Project configuration
+  _REGION: 'asia-southeast1'
+  _REPOSITORY: 'qrl-trading-api'
+  _SERVICE_NAME: 'qrl-trading-api'
+  
+  # Cloud Run configuration
+  _MEMORY: '512Mi'
+  _MAX_INSTANCES: '1'
+  _MIN_INSTANCES: '0'
+  _TIMEOUT: '300s'
+  
+  # Environment variables (non-sensitive)
+  _REDIS_URL: 'redis://localhost:6379/0'  # Update with your Redis URL
+  _TRADING_PAIR: 'QRL-USDT'
+  _MAX_DAILY_TRADES: '8'
+  
+  # Secret Manager references (sensitive data)
+  # Create these secrets in Secret Manager first:
+  #   gcloud secrets create mexc-api-key --data-file=-
+  #   gcloud secrets create mexc-api-secret --data-file=-
+  _MEXC_API_KEY_SECRET: 'mexc-api-key'
+  _MEXC_API_SECRET_SECRET: 'mexc-api-secret'
+
+# Build options
+options:
+  # Use high-performance machine for faster builds
+  machineType: 'N1_HIGHCPU_8'
+  
+  # Increase timeout for large builds
+  timeout: 1200s
+  
+  # Enable Docker layer caching for faster builds
+  substitutionOption: 'ALLOW_LOOSE'
+  
+  # Logging options
+  logging: CLOUD_LOGGING_ONLY
+
+# Tags for build tracking
+tags:
+  - 'qrl-trading-api'
+  - 'fastapi'
+  - 'cloud-run'
+
+# Images to be pushed to Artifact Registry
+images:
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:${SHORT_SHA}'
+  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPOSITORY}/${_SERVICE_NAME}:latest'
+
+# Timeout for entire build
+timeout: 1800s
