@@ -312,6 +312,7 @@
         
         async function loadAccountBalance() {
             const data = await fetchData('/account/balance');
+            console.log('Account balance response:', data);
             if (data && data.balances) {
                 // QRL Balance
                 const qrl = data.balances.QRL || { free: '0', locked: '0' };
@@ -327,8 +328,10 @@
                 document.getElementById('usdt-free').textContent = parseFloat(usdt.free).toFixed(2);
                 document.getElementById('usdt-locked').textContent = parseFloat(usdt.locked).toFixed(2);
                 
+                console.log('Balances loaded:', { qrlTotal, usdtTotal });
                 return { qrlTotal, usdtTotal };
             }
+            console.error('Failed to load account balance - no data or no balances property');
             return null;
         }
         
@@ -352,11 +355,13 @@
         
         async function loadStatus() {
             const data = await fetchData('/status');
+            console.log('Status response:', data);
             if (data) {
                 document.getElementById('daily-trades').textContent = data.daily_trades || 0;
                 document.getElementById('bot-status').textContent = data.bot_status || 'unknown';
                 
                 if (data.position) {
+                    console.log('Position data:', data.position);
                     // Update average cost
                     const avgCost = data.position.avg_cost;
                     if (avgCost && avgCost !== '0') {
@@ -376,10 +381,13 @@
                     } else {
                         document.getElementById('unrealized-pnl').textContent = 'N/A';
                     }
+                } else {
+                    console.error('No position data in status response');
                 }
                 
                 return data.position || {};
             }
+            console.error('Failed to load status - no data');
             return {};
         }
         
