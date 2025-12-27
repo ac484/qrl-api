@@ -20,24 +20,21 @@ class RedisClient:
     
     def connect(self) -> bool:
         """
-        Establish connection to Redis
+        Establish connection to Redis using REDIS_URL
         
         Returns:
             bool: True if connection successful, False otherwise
         """
         try:
-            self.client = redis.Redis(
-                host=config.REDIS_HOST,
-                port=config.REDIS_PORT,
-                password=config.REDIS_PASSWORD if config.REDIS_PASSWORD else None,
-                db=config.REDIS_DB,
+            self.client = redis.from_url(
+                config.REDIS_URL,
                 decode_responses=True,
                 socket_connect_timeout=5,
                 socket_timeout=5
             )
             # Test connection
             self.client.ping()
-            logger.info(f"Connected to Redis at {config.REDIS_HOST}:{config.REDIS_PORT}")
+            logger.info(f"Connected to Redis at {config.REDIS_URL}")
             return True
         except Exception as e:
             logger.error(f"Failed to connect to Redis: {e}")
@@ -262,6 +259,117 @@ class RedisClient:
         except Exception as e:
             logger.error(f"Redis health check failed: {e}")
             return False
+    
+    # ===== Position Layer Management (Accumulation Strategy) =====
+    
+    def set_position_layers(self, layers: Dict[str, Any]) -> bool:
+        """
+        Store position layer data (core, swing, active)
+        
+        Args:
+            layers: Dictionary with layer information
+                {
+                    'core_qrl': float,
+                    'swing_qrl': float,
+                    'active_qrl': float,
+                    'total_qrl': float,
+                    'core_percent': float,
+                    'last_adjust': int (timestamp)
+                }
+            
+        Returns:
+            bool: True if successful
+        """
+        try:
+            key = f"bot:{config.TRADING_PAIR.lower()}:position:layers"
+            self.client.hset(key, mapping=layers)
+            logger.info(f"Position layers updated: {layers}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set position layers: {e}")
+            return False
+    
+    def get_position_layers(self) -> Optional[Dict[str, str]]:
+        """
+        Get position layer data
+        
+        Returns:
+            dict: Position layer data or None if not found
+        """
+        try:
+            key = f"bot:{config.TRADING_PAIR.lower()}:position:layers"
+            layers = self.client.hgetall(key)
+            return layers if layers else None
+        except Exception as e:
+            logger.error(f"Failed to get position layers: {e}")
+            return None
+    
+    def set_cost_tracking(self, cost_data: Dict[str, Any]) -> bool:
+        """
+        Store cost tracking data
+        
+        Args:
+            cost_data: Dictionary with cost information
+                {
+                    'avg_cost': float,
+                    'core_avg_cost': float,
+                    'total_invested': float,
+                    'unrealized_pnl': float,
+                    'realized_pnl': float
+                }
+            
+        Returns:
+            bool: True if successful
+        """
+        try:
+            key = f"bot:{config.TRADING_PAIR.lower()}:cost"
+            self.client.hset(key, mapping=cost_data)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set cost tracking: {e}")
+            return False
+    
+    def get_cost_tracking(self) -> Optional[Dict[str, str]]:
+        """
+        Get cost tracking data
+        
+        Returns:
+            dict: Cost tracking data or None if not found
+        """
+        try:
+            key = f"bot:{config.TRADING_PAIR.lower()}:cost"
+            cost_data = self.client.hgetall(key)
+            return cost_data if cost_data else None
+        except Exception as e:
+            logger.error(f"Failed to get cost tracking: {e}")
+            return None
+    
+    def get_tradeable_qrl(self, layer: str = 'all') -> float:
+        """
+        Get tradeable QRL amount (excluding core position)
+        
+        Args:
+            layer: 'all', 'swing', or 'active'
+            
+        Returns:
+            float: Tradeable QRL amount
+        """
+        try:
+            layers = self.get_position_layers()
+            if not layers:
+                return 0.0
+            
+            if layer == 'active':
+                return float(layers.get('active_qrl', 0))
+            elif layer == 'swing':
+                return float(layers.get('swing_qrl', 0))
+            else:  # 'all'
+                swing = float(layers.get('swing_qrl', 0))
+                active = float(layers.get('active_qrl', 0))
+                return swing + active
+        except Exception as e:
+            logger.error(f"Failed to get tradeable QRL: {e}")
+            return 0.0
 
 
 # Create singleton instance

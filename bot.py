@@ -161,7 +161,12 @@ class TradingBot:
     
     def _strategy_phase(self, market_data: Dict[str, Any]) -> TradeSignal:
         """
-        Strategy phase: Calculate indicators and generate trading signal
+        Strategy phase: Dynamic Layered Accumulation Strategy
+        
+        Implements dynamic position management with three layers:
+        - Core position (70%): Never traded, long-term hold
+        - Swing position (20%): Week-level trades on 10-20% moves
+        - Active position (10%): Day-level trades on 3-8% moves
         
         Args:
             market_data: Current market data
@@ -170,32 +175,73 @@ class TradingBot:
             TradeSignal: Trading signal (BUY/SELL/HOLD)
         """
         try:
-            # Get price history
+            # Get price history and calculate moving average
             price_history = redis_client.get_price_history(100)
             
             if len(price_history) < config.LONG_MA_PERIOD:
                 logger.info("Insufficient price history for strategy")
                 return TradeSignal.HOLD
             
-            # Calculate simple moving averages
-            short_ma = sum(price_history[:config.SHORT_MA_PERIOD]) / config.SHORT_MA_PERIOD
+            # Calculate moving average for reference
             long_ma = sum(price_history[:config.LONG_MA_PERIOD]) / config.LONG_MA_PERIOD
-            
             current_price = market_data['price']
             
-            logger.info(f"Strategy indicators - Price: {current_price}, "
-                       f"Short MA: {short_ma:.4f}, Long MA: {long_ma:.4f}")
+            # Get cost tracking data
+            cost_data = redis_client.get_cost_tracking()
+            avg_cost = float(cost_data.get('avg_cost', current_price)) if cost_data else current_price
             
-            # Simple MA crossover strategy
-            if short_ma > long_ma:
-                logger.info("Signal: BUY (Short MA > Long MA)")
-                return TradeSignal.BUY
-            elif short_ma < long_ma:
-                logger.info("Signal: SELL (Short MA < Long MA)")
+            # Get last sell price for buyback strategy
+            last_sell_price = redis_client.get_latest_price() or current_price
+            
+            logger.info(f"Accumulation strategy - Price: {current_price:.6f}, "
+                       f"MA({config.LONG_MA_PERIOD}): {long_ma:.6f}, "
+                       f"Avg Cost: {avg_cost:.6f}")
+            
+            # ===== SELL SIGNALS (only active/swing positions, never core) =====
+            
+            # Check if we should sell active position (quick profit taking)
+            if current_price >= avg_cost * config.ACTIVE_SELL_THRESHOLD:
+                logger.info(f"Signal: SELL (Active position - price {((current_price/avg_cost-1)*100):.1f}% above cost)")
                 return TradeSignal.SELL
-            else:
-                logger.info("Signal: HOLD (No clear trend)")
-                return TradeSignal.HOLD
+            
+            # Check if we should sell swing position (larger profit taking)
+            if current_price >= avg_cost * config.SWING_SELL_THRESHOLD:
+                logger.info(f"Signal: SELL (Swing position - price {((current_price/avg_cost-1)*100):.1f}% above cost)")
+                return TradeSignal.SELL
+            
+            # ===== BUY SIGNALS (accumulation strategy) =====
+            
+            # Buy condition 1: Price dip below moving average
+            if current_price < long_ma * config.DCA_DIP_THRESHOLD:
+                if not config.ALLOW_BUY_ABOVE_COST and current_price > avg_cost:
+                    logger.info(f"Price dip detected but above cost - HOLD (cost protection)")
+                    return TradeSignal.HOLD
+                
+                logger.info(f"Signal: BUY (Price dip - {((1-current_price/long_ma)*100):.1f}% below MA)")
+                return TradeSignal.BUY
+            
+            # Buy condition 2: Buyback after selling (price dropped from last sell)
+            drop_percent = (1 - current_price / last_sell_price) * 100
+            if drop_percent >= config.BUYBACK_DROP_PERCENT:
+                logger.info(f"Signal: BUY (Buyback - price dropped {drop_percent:.1f}% from last sell)")
+                return TradeSignal.BUY
+            
+            # Buy condition 3: Periodic accumulation (DCA)
+            last_trade_time = redis_client.get_last_trade_time()
+            if last_trade_time:
+                import time
+                hours_since_last = (time.time() - last_trade_time) / 3600
+                if hours_since_last >= config.DCA_INTERVAL_HOURS:
+                    if not config.ALLOW_BUY_ABOVE_COST and current_price > avg_cost:
+                        logger.info(f"Periodic DCA due but price above cost - HOLD (cost protection)")
+                        return TradeSignal.HOLD
+                    
+                    logger.info(f"Signal: BUY (Periodic DCA - {hours_since_last:.1f}h since last trade)")
+                    return TradeSignal.BUY
+            
+            # Default: HOLD
+            logger.info("Signal: HOLD (Waiting for better opportunity)")
+            return TradeSignal.HOLD
                 
         except Exception as e:
             logger.error(f"Strategy phase error: {e}")
@@ -203,7 +249,12 @@ class TradingBot:
     
     def _risk_control_phase(self, signal: TradeSignal, market_data: Dict[str, Any]) -> bool:
         """
-        Risk control phase: Verify trading conditions
+        Risk control phase: Verify trading conditions with core position protection
+        
+        For accumulation strategy:
+        - Protects core position (never sell below core threshold)
+        - Ensures USDT reserve for future opportunities
+        - Validates sell profit meets minimum threshold
         
         Args:
             signal: Trading signal
@@ -222,18 +273,60 @@ class TradingBot:
                 logger.warning(f"Daily trade limit reached: {daily_trades}/{config.MAX_DAILY_TRADES}")
                 return False
             
-            # Check balance
             balance = market_data['balance']
-            if signal == TradeSignal.BUY and balance['USDT'] < 10:
-                logger.warning("Insufficient USDT balance")
-                return False
+            current_price = market_data['price']
             
-            if signal == TradeSignal.SELL and balance['QRL'] < 0.1:
-                logger.warning("Insufficient QRL balance")
-                return False
+            # ===== BUY signal checks =====
+            if signal == TradeSignal.BUY:
+                # Check USDT balance
+                if balance['USDT'] < config.MIN_USDT_FOR_TRADE:
+                    logger.warning(f"Insufficient USDT balance: {balance['USDT']}")
+                    return False
+                
+                # Check if we're maintaining minimum USDT reserve
+                total_value = balance['QRL'] * current_price + balance['USDT']
+                min_usdt_reserve = total_value * (config.MIN_USDT_RESERVE_PERCENT / 100)
+                
+                if balance['USDT'] < min_usdt_reserve:
+                    logger.warning(f"USDT below minimum reserve: {balance['USDT']} < {min_usdt_reserve}")
+                    return False
+                
+                logger.info("Risk control checks passed for BUY")
+                return True
             
-            logger.info("Risk control checks passed")
-            return True
+            # ===== SELL signal checks =====
+            if signal == TradeSignal.SELL:
+                # Get position layers to protect core position
+                layers = redis_client.get_position_layers()
+                if layers:
+                    core_qrl = float(layers.get('core_qrl', 0))
+                    total_qrl = balance['QRL']
+                    
+                    # Ensure we never sell below core position
+                    if total_qrl <= core_qrl:
+                        logger.warning(f"Cannot sell: at or below core position ({total_qrl} <= {core_qrl})")
+                        return False
+                
+                # Check minimum tradeable QRL
+                tradeable_qrl = redis_client.get_tradeable_qrl('all')
+                if tradeable_qrl < 0.1:
+                    logger.warning(f"Insufficient tradeable QRL: {tradeable_qrl}")
+                    return False
+                
+                # Check if sell meets minimum profit requirement
+                cost_data = redis_client.get_cost_tracking()
+                if cost_data:
+                    avg_cost = float(cost_data.get('avg_cost', 0))
+                    if avg_cost > 0:
+                        profit_percent = ((current_price / avg_cost) - 1) * 100
+                        if profit_percent < config.MIN_SELL_PROFIT_PERCENT:
+                            logger.warning(f"Profit {profit_percent:.2f}% below minimum {config.MIN_SELL_PROFIT_PERCENT}%")
+                            return False
+                
+                logger.info("Risk control checks passed for SELL")
+                return True
+            
+            return False
             
         except Exception as e:
             logger.error(f"Risk control error: {e}")

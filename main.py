@@ -4,6 +4,7 @@ Flask web server for Cloud Run deployment
 """
 import logging
 import sys
+import time
 from flask import Flask, request, jsonify
 from pythonjsonlogger import jsonlogger
 
@@ -176,8 +177,6 @@ def control_bot():
 
 
 if __name__ == '__main__':
-    import time
-    
     logger.info(f"Starting QRL Trading Bot on port {config.PORT}")
     logger.info(f"Trading pair: {config.TRADING_PAIR}")
     logger.info(f"Redis: {config.REDIS_HOST}:{config.REDIS_PORT}")
