@@ -364,9 +364,9 @@
                     console.log('Position data:', data.position);
                     
                     // Update QRL balance from position data (source of truth)
-                    if (data.position.qrl_balance) {
+                    if (data.position.qrl_balance !== undefined && data.position.qrl_balance !== null) {
                         const qrlBalance = parseFloat(data.position.qrl_balance);
-                        if (qrlBalance > 0) {
+                        if (!isNaN(qrlBalance)) {
                             document.getElementById('qrl-balance').textContent = qrlBalance.toFixed(4);
                             document.getElementById('qrl-free').textContent = qrlBalance.toFixed(4);
                             document.getElementById('qrl-locked').textContent = '0.0000';
@@ -374,9 +374,9 @@
                     }
                     
                     // Update USDT balance from position data (source of truth)
-                    if (data.position.usdt_balance) {
+                    if (data.position.usdt_balance !== undefined && data.position.usdt_balance !== null) {
                         const usdtBalance = parseFloat(data.position.usdt_balance);
-                        if (usdtBalance > 0) {
+                        if (!isNaN(usdtBalance)) {
                             document.getElementById('usdt-balance').textContent = usdtBalance.toFixed(2);
                             document.getElementById('usdt-free').textContent = usdtBalance.toFixed(2);
                             document.getElementById('usdt-locked').textContent = '0.00';
