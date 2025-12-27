@@ -134,9 +134,9 @@ class TradingBot:
             dict: Market data or None if failed
         """
         try:
-            # Fetch current price from MEXC
-            current_price = mexc_client.get_ticker_price('QRLUSDT')
-            if not current_price:
+            # Fetch current price from MEXC (use correct symbol format with slash)
+            current_price = mexc_client.get_ticker_price('QRL/USDT')
+            if not current_price or current_price <= 0:
                 logger.warning("Failed to fetch price from MEXC, using last known price")
                 current_price = redis_client.get_latest_price() or 0.5
             
@@ -146,7 +146,7 @@ class TradingBot:
             
             # Fetch account balance from MEXC
             balance = mexc_client.get_account_balance()
-            if not balance:
+            if not balance or (balance.get('USDT', 0) == 0 and balance.get('QRL', 0) == 0):
                 logger.warning("Failed to fetch balance from MEXC, using mock data")
                 balance = {'USDT': 1000.0, 'QRL': 0.0}
             
