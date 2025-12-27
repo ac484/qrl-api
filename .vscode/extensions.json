@@ -1,4 +1,39 @@
 {
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=827846
-  "recommendations": ["cipchk.ng-alain-extension-pack"]
+  "recommendations": [
+    // Python Core
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.debugpy",
+    
+    // Python Formatting & Linting
+    "ms-python.black-formatter",
+    "ms-python.isort",
+    "ms-python.flake8",
+    
+    // FastAPI & Web Development
+    "ms-python.vscode-pylance",
+    "redhat.vscode-yaml",
+    
+    // Docker
+    "ms-azuretools.vscode-docker",
+    
+    // Redis
+    "cweijan.vscode-redis-client",
+    
+    // Git
+    "eamodio.gitlens",
+    
+    // Markdown
+    "yzhang.markdown-all-in-one",
+    
+    // ENV files
+    "mikestead.dotenv",
+    
+    // REST Client (for API testing)
+    "humao.rest-client",
+    
+    // Code Spell Checker
+    "streetsidesoftware.code-spell-checker"
+  ]
 }
