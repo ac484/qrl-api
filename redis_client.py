@@ -20,11 +20,12 @@ class RedisClient:
     def __init__(self):
         """Initialize Redis connection"""
         self.client: Optional[redis.Redis] = None
+        self.pool: Optional[redis.ConnectionPool] = None
         self.connected = False
     
     async def connect(self) -> bool:
         """
-        Connect to Redis server
+        Connect to Redis server with connection pool
         
         Returns:
             True if connection successful
@@ -32,25 +33,32 @@ class RedisClient:
         try:
             # Use REDIS_URL if provided (for Redis Cloud)
             if config.REDIS_URL:
-                self.client = redis.from_url(
+                self.pool = redis.ConnectionPool.from_url(
                     config.REDIS_URL,
+                    max_connections=20,
                     decode_responses=config.REDIS_DECODE_RESPONSES,
                     socket_connect_timeout=config.REDIS_SOCKET_CONNECT_TIMEOUT,
-                    socket_timeout=config.REDIS_SOCKET_TIMEOUT
+                    socket_timeout=config.REDIS_SOCKET_TIMEOUT,
+                    health_check_interval=30
                 )
-                logger.info(f"Connected to Redis using REDIS_URL")
+                logger.info(f"Created Redis connection pool using REDIS_URL")
             else:
                 # Fallback to individual parameters
-                self.client = redis.Redis(
+                self.pool = redis.ConnectionPool(
                     host=config.REDIS_HOST,
                     port=config.REDIS_PORT,
                     password=config.REDIS_PASSWORD,
                     db=config.REDIS_DB,
+                    max_connections=20,
                     decode_responses=config.REDIS_DECODE_RESPONSES,
                     socket_connect_timeout=config.REDIS_SOCKET_CONNECT_TIMEOUT,
-                    socket_timeout=config.REDIS_SOCKET_TIMEOUT
+                    socket_timeout=config.REDIS_SOCKET_TIMEOUT,
+                    health_check_interval=30
                 )
-                logger.info(f"Connected to Redis at {config.REDIS_HOST}:{config.REDIS_PORT}")
+                logger.info(f"Created Redis connection pool at {config.REDIS_HOST}:{config.REDIS_PORT}")
+            
+            # Create Redis client from pool
+            self.client = redis.Redis(connection_pool=self.pool)
             
             # Test connection
             await self.client.ping()
@@ -233,6 +241,9 @@ class RedisClient:
             # Keep only last 1000 prices
             await self.client.zremrangebyrank(key, 0, -1001)
             
+            # Set TTL to 30 days
+            await self.client.expire(key, 86400 * 30)
+            
             return True
         except Exception as e:
             logger.error(f"Failed to add price to history: {e}")
@@ -384,11 +395,15 @@ class RedisClient:
             return {}
     
     async def close(self):
-        """Close Redis connection"""
+        """Close Redis connection and connection pool"""
         if self.client:
-            await self.client.close()
+            await self.client.aclose()
             self.connected = False
-            logger.info("Redis connection closed")
+            logger.info("Redis client closed")
+        
+        if self.pool:
+            await self.pool.aclose()
+            logger.info("Redis connection pool closed")
 
 
 # Singleton instance

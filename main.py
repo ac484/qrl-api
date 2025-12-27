@@ -7,6 +7,7 @@ import sys
 from datetime import datetime
 from typing import Dict, Any, Optional
 from pathlib import Path
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, HTMLResponse
@@ -28,13 +29,58 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+
+# ===== Lifespan Context Manager =====
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events"""
+    # Startup
+    logger.info("Starting QRL Trading API (Cloud Run mode)...")
+    
+    # Connect to Redis
+    if not await redis_client.connect():
+        logger.warning("Redis connection failed - some features may not work")
+    else:
+        logger.info("Redis connection successful")
+    
+    # Test MEXC API
+    try:
+        await mexc_client.ping()
+        logger.info("MEXC API connection successful")
+    except Exception as e:
+        logger.warning(f"MEXC API connection test failed: {e}")
+    
+    # Initialize bot status
+    if redis_client.connected:
+        await redis_client.set_bot_status("initialized", 
+            {"startup_time": datetime.now().isoformat()})
+    
+    logger.info("QRL Trading API started successfully (Cloud Run - serverless mode)")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down QRL Trading API...")
+    
+    if redis_client.connected:
+        await redis_client.set_bot_status("stopped", 
+            {"shutdown_time": datetime.now().isoformat()})
+        await redis_client.close()
+    
+    await mexc_client.close()
+    
+    logger.info("QRL Trading API shut down")
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="QRL Trading API",
     description="MEXC API Integration for QRL/USDT Automated Trading (Cloud Run)",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Setup templates and static files
@@ -60,6 +106,7 @@ class StatusResponse(BaseModel):
     """Bot status response"""
     bot_status: str
     position: Dict[str, Any]
+    position_layers: Optional[Dict[str, Any]] = None  # Position layers (core/swing/active)
     latest_price: Optional[Dict[str, Any]]
     daily_trades: int
     timestamp: str
@@ -85,45 +132,6 @@ class ExecuteResponse(BaseModel):
     message: str
     details: Dict[str, Any]
     timestamp: str
-
-
-# ===== Startup & Shutdown Events =====
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize connections on startup"""
-    logger.info("Starting QRL Trading API (Cloud Run mode)...")
-    
-    # Connect to Redis
-    if not await redis_client.connect():
-        logger.warning("Redis connection failed - some features may not work")
-    
-    # Test MEXC API
-    try:
-        await mexc_client.ping()
-        logger.info("MEXC API connection successful")
-    except Exception as e:
-        logger.warning(f"MEXC API connection test failed: {e}")
-    
-    # Initialize bot status
-    if redis_client.connected:
-        await redis_client.set_bot_status("initialized", {"startup_time": datetime.now().isoformat()})
-    
-    logger.info("QRL Trading API started successfully (Cloud Run - serverless mode)")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    logger.info("Shutting down QRL Trading API...")
-    
-    if redis_client.connected:
-        await redis_client.set_bot_status("stopped", {"shutdown_time": datetime.now().isoformat()})
-        await redis_client.close()
-    
-    await mexc_client.close()
-    
-    logger.info("QRL Trading API shut down")
 
 
 # ===== API Endpoints =====
@@ -186,6 +194,7 @@ async def get_status():
     bot_status = await redis_client.get_bot_status()
     position = await redis_client.get_position()
     cost_data = await redis_client.get_cost_data()
+    position_layers = await redis_client.get_position_layers()
     latest_price = await redis_client.get_latest_price()
     daily_trades = await redis_client.get_daily_trades()
     
@@ -197,6 +206,7 @@ async def get_status():
     return StatusResponse(
         bot_status=bot_status.get("status", "unknown"),
         position=merged_position,
+        position_layers=position_layers if position_layers else None,
         latest_price=latest_price,
         daily_trades=daily_trades,
         timestamp=datetime.now().isoformat()
