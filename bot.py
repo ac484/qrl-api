@@ -165,6 +165,29 @@ class TradingBot:
                             usdt_balance = float(balance.get("free", 0))
                     
                     self._log(f"Balance: {qrl_balance} QRL, {usdt_balance} USDT")
+                    
+                    # Update position data in Redis
+                    position_data = {
+                        "qrl_balance": str(qrl_balance),
+                        "usdt_balance": str(usdt_balance),
+                    }
+                    await self.redis.set_position(position_data)
+                    
+                    # Calculate and update cost data
+                    position = await self.redis.get_position()
+                    cost_data = await self.redis.get_cost_data()
+                    
+                    # Get or calculate average cost
+                    avg_cost = float(cost_data.get("avg_cost", 0)) if cost_data.get("avg_cost") else price
+                    total_invested = qrl_balance * avg_cost
+                    unrealized_pnl = (price - avg_cost) * qrl_balance if avg_cost > 0 else 0
+                    
+                    await self.redis.set_cost_data(
+                        avg_cost=avg_cost,
+                        total_invested=total_invested,
+                        unrealized_pnl=unrealized_pnl
+                    )
+                    
                 except Exception as e:
                     self._log(f"Failed to get account balance: {e}", "warning")
             
@@ -328,6 +351,22 @@ class TradingBot:
                 await self.redis.increment_daily_trades()
                 await self.redis.set_last_trade_time()
                 
+                # Update average cost after BUY
+                cost_data = await self.redis.get_cost_data()
+                old_avg_cost = float(cost_data.get("avg_cost", 0)) if cost_data.get("avg_cost") else 0
+                old_total_invested = float(cost_data.get("total_invested", 0)) if cost_data.get("total_invested") else 0
+                
+                # Calculate new weighted average cost
+                new_total_invested = old_total_invested + usdt_to_use
+                new_qrl_balance = qrl_balance + qrl_quantity
+                new_avg_cost = new_total_invested / new_qrl_balance if new_qrl_balance > 0 else price
+                
+                await self.redis.set_cost_data(
+                    avg_cost=new_avg_cost,
+                    total_invested=new_total_invested,
+                    unrealized_pnl=0  # Reset after buy
+                )
+                
                 return {
                     "success": True,
                     "signal": "BUY",
@@ -371,6 +410,24 @@ class TradingBot:
                 # Update counters
                 await self.redis.increment_daily_trades()
                 await self.redis.set_last_trade_time()
+                
+                # Update realized PnL after SELL
+                cost_data = await self.redis.get_cost_data()
+                avg_cost = float(cost_data.get("avg_cost", 0)) if cost_data.get("avg_cost") else price
+                realized_pnl_from_trade = (price - avg_cost) * qrl_to_sell
+                old_realized_pnl = float(cost_data.get("realized_pnl", 0)) if cost_data.get("realized_pnl") else 0
+                
+                # Update cost data
+                new_realized_pnl = old_realized_pnl + realized_pnl_from_trade
+                new_qrl_balance = qrl_balance - qrl_to_sell
+                unrealized_pnl = (price - avg_cost) * new_qrl_balance if new_qrl_balance > 0 else 0
+                
+                await self.redis.set_cost_data(
+                    avg_cost=avg_cost,  # Keep same average cost
+                    total_invested=avg_cost * new_qrl_balance,
+                    unrealized_pnl=unrealized_pnl,
+                    realized_pnl=new_realized_pnl
+                )
                 
                 return {
                     "success": True,
