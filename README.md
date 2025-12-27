@@ -228,6 +228,21 @@ qrl-api/
 - [MEXC API SDK](https://github.com/mexcdevelop/mexc-api-sdk)
 - [WebSocket 協議](https://github.com/mexcdevelop/websocket-proto)
 
+## 疑難排解
+
+遇到問題？查看我們的 **[疑難排解指南](./TROUBLESHOOTING.md)** 了解常見問題和解決方案：
+
+- 🔴 餘額顯示錯誤或卡住
+- 🔴 子帳戶無法載入
+- 🔴 機器人無法交易
+- 🔧 詳細除錯步驟
+- 📋 部署前檢查清單
+
+**常見問題快速連結:**
+- [API 密鑰配置](./TROUBLESHOOTING.md#api-keys-not-configured-)
+- [子帳戶權限](./TROUBLESHOOTING.md#not-a-broker-account-)
+- [除錯步驟](./TROUBLESHOOTING.md#-debugging-steps)
+
 ## 安全注意事項
 
 ⚠️ **重要**:
@@ -243,4 +258,94 @@ MIT License
 
 ## 支援
 
-如有問題，請提交 GitHub Issue。
+如有問題，請：
+1. 查看 [疑難排解指南](./TROUBLESHOOTING.md)
+2. 查看 [現有 Issues](https://github.com/7Spade/qrl-api/issues)
+3. 提交新的 [GitHub Issue](https://github.com/7Spade/qrl-api/issues/new)
+
+## Sub-Account Support
+
+### MEXC v3 API Dual-Mode Sub-Account System
+
+此專案支援 MEXC v3 API 的兩種子帳戶系統：
+
+#### 1. **SPOT API** (一般用戶)
+- 使用數字 `subAccountId` 識別子帳戶
+- 支援主帳戶與子帳戶間的通用轉帳
+- 支援不同帳戶類型：SPOT, MARGIN, ETF, CONTRACT
+- 所有 MEXC 用戶可使用
+
+#### 2. **BROKER API** (券商/機構用戶)
+- 使用字串 `subAccount` 名稱識別子帳戶
+- 需要特殊的 Broker API 權限
+- 提供更全面的子帳戶管理功能
+- 可查詢子帳戶餘額
+
+### 配置
+
+在 `.env` 文件中設置子帳戶模式：
+
+```bash
+# 選擇子帳戶模式 (SPOT 或 BROKER)
+SUB_ACCOUNT_MODE=SPOT
+
+# 如果你有 MEXC Broker 帳戶，設置為 true
+IS_BROKER_ACCOUNT=false
+
+# SPOT 模式：提供數字 ID
+# SUB_ACCOUNT_ID=123456
+
+# BROKER 模式：提供帳戶名稱
+# SUB_ACCOUNT_NAME=trading_account_001
+```
+
+### API 端點
+
+**獲取子帳戶列表**
+```bash
+GET /account/sub-accounts
+```
+
+**查詢子帳戶餘額** (僅 BROKER 模式)
+```bash
+GET /account/sub-account/balance?identifier=<sub_account_id_or_name>
+```
+
+**子帳戶間轉帳**
+```bash
+POST /account/sub-account/transfer
+{
+  "from_account": "源帳戶",
+  "to_account": "目標帳戶",
+  "asset": "USDT",
+  "amount": "100",
+  "from_type": "SPOT",  # SPOT 模式專用
+  "to_type": "SPOT"     # SPOT 模式專用
+}
+```
+
+**創建子帳戶 API Key**
+```bash
+POST /account/sub-account/api-key
+{
+  "sub_account_identifier": "子帳戶 ID 或名稱",
+  "note": "API Key 說明",
+  "permissions": "權限"
+}
+```
+
+### 特性
+
+✅ 自動模式檢測（SPOT/BROKER）  
+✅ 統一的 API 接口  
+✅ 完整的錯誤處理  
+✅ 支援多種子帳戶操作  
+✅ 向後兼容設計  
+✅ 完整的測試覆蓋
+
+### 注意事項
+
+- **SPOT API**: 無法從主帳戶直接查詢子帳戶餘額，需使用子帳戶的 API Key
+- **BROKER API**: 需要 MEXC Broker 帳戶權限
+- 詳細的 API 文檔請參考 MEXC v3 官方文檔
+

@@ -49,15 +49,17 @@ steps:
       - 'http'
       - 'qrl-sync-balance-job'
       - '--location=asia-southeast1'
-      - '--schedule=* * * * *'
+      - '--schedule=*/3 * * * *'
       - '--uri=https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/sync-balance'
       - '--http-method=POST'
       - '--headers=X-CloudScheduler=true,Content-Type=application/json'
       - '--message-body={}'
       - '--time-zone=Asia/Taipei'
       - '--description=Sync MEXC account balance to Redis every minute'
-      - '--attempt-deadline=320s'
+      - '--attempt-deadline=60s'
       - '--max-retry-attempts=3'
+      - '--min-backoff-duration=5s'
+      - '--max-backoff-duration=60s'
 
   # Step 5: 創建 Job 2 - 價格更新（每分鐘）
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -69,15 +71,17 @@ steps:
       - 'http'
       - 'qrl-update-price-job'
       - '--location=asia-southeast1'
-      - '--schedule=* * * * *'
+      - '--schedule=*/3 * * * *'
       - '--uri=https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/update-price'
       - '--http-method=POST'
       - '--headers=X-CloudScheduler=true,Content-Type=application/json'
       - '--message-body={}'
       - '--time-zone=Asia/Taipei'
       - '--description=Update QRL/USDT price from MEXC every minute'
-      - '--attempt-deadline=320s'
+      - '--attempt-deadline=60s'
       - '--max-retry-attempts=3'
+      - '--min-backoff-duration=5s'
+      - '--max-backoff-duration=60s'
 
   # Step 6: 創建 Job 3 - 成本更新（每 5 分鐘）
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -89,15 +93,17 @@ steps:
       - 'http'
       - 'qrl-update-cost-job'
       - '--location=asia-southeast1'
-      - '--schedule=*/5 * * * *'
+      - '--schedule=*/15 * * * *'
       - '--uri=https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/update-cost'
       - '--http-method=POST'
       - '--headers=X-CloudScheduler=true,Content-Type=application/json'
       - '--message-body={}'
       - '--time-zone=Asia/Taipei'
       - '--description=Update cost and PnL calculations every 5 minutes'
-      - '--attempt-deadline=320s'
+      - '--attempt-deadline=60s'
       - '--max-retry-attempts=3'
+      - '--min-backoff-duration=5s'
+      - '--max-backoff-duration=60s'
 
   # Step 7: 列出所有創建的 jobs 進行驗證
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -115,6 +121,8 @@ steps:
     args:
       - '-c'
       - |
+        echo "Waiting for Cloud Run to be ready..."
+        sleep 30
         echo "Testing scheduler jobs..."
         echo "Triggering sync-balance-job..."
         gcloud scheduler jobs run qrl-sync-balance-job --location=asia-southeast1 || true

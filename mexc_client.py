@@ -3,6 +3,7 @@ MEXC API Client for Spot Trading (v3)
 Async implementation using httpx
 Based on official MEXC API documentation
 """
+import asyncio
 import hashlib
 import hmac
 import time
@@ -81,16 +82,18 @@ class MEXCClient:
         method: str,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
-        signed: bool = False
+        signed: bool = False,
+        max_retries: int = 3
     ) -> Dict[str, Any]:
         """
-        Make async HTTP request to MEXC API
+        Make async HTTP request to MEXC API with retry logic
         
         Args:
             method: HTTP method (GET, POST, DELETE)
             endpoint: API endpoint
             params: Request parameters
             signed: Whether request requires signature
+            max_retries: Maximum number of retry attempts
             
         Returns:
             API response as dictionary
@@ -106,29 +109,53 @@ class MEXCClient:
             params["timestamp"] = int(time.time() * 1000)
             params["signature"] = self._generate_signature(params)
         
-        try:
-            # Create client if not exists
-            if not self._client:
-                self._client = httpx.AsyncClient(
-                    headers=self.headers,
-                    timeout=self.timeout
-                )
-            
-            if method == "GET":
-                response = await self._client.get(url, params=params)
-            elif method == "POST":
-                response = await self._client.post(url, params=params)
-            elif method == "DELETE":
-                response = await self._client.delete(url, params=params)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
-            
-            response.raise_for_status()
-            return response.json()
+        last_exception = None
         
-        except httpx.HTTPError as e:
-            logger.error(f"MEXC API request failed: {e}")
-            raise
+        for attempt in range(max_retries):
+            try:
+                # Create client if not exists
+                if not self._client:
+                    self._client = httpx.AsyncClient(
+                        headers=self.headers,
+                        timeout=self.timeout
+                    )
+                
+                if method == "GET":
+                    response = await self._client.get(url, params=params)
+                elif method == "POST":
+                    response = await self._client.post(url, params=params)
+                elif method == "DELETE":
+                    response = await self._client.delete(url, params=params)
+                else:
+                    raise ValueError(f"Unsupported HTTP method: {method}")
+                
+                response.raise_for_status()
+                return response.json()
+            
+            except httpx.HTTPStatusError as e:
+                last_exception = e
+                if e.response.status_code in [429, 503, 504]:
+                    # Rate limit or server error - retry with exponential backoff
+                    wait_time = 2 ** attempt
+                    logger.warning(f"MEXC API error {e.response.status_code}, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(wait_time)
+                        continue
+                raise
+            
+            except httpx.RequestError as e:
+                last_exception = e
+                # Network error - retry with exponential backoff
+                wait_time = 2 ** attempt
+                logger.warning(f"MEXC API network error: {e}, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(wait_time)
+                    continue
+                raise
+        
+        # If we get here, all retries failed
+        logger.error(f"MEXC API request failed after {max_retries} attempts: {last_exception}")
+        raise last_exception if last_exception else Exception("Unknown error")
     
     # ===== Public Market Data Endpoints =====
     
@@ -371,33 +398,357 @@ class MEXCClient:
     
     # ===== Sub-Account Endpoints (Authenticated) =====
     
-    async def get_sub_accounts(self) -> List[Dict[str, Any]]:
-        """
-        Get sub-accounts list
-        
-        Returns:
-            List of sub-accounts
-        """
-        try:
-            # MEXC sub-account API endpoint
-            # Note: This endpoint may require special permissions
-            return await self._request("GET", "/api/v3/sub-account/list", signed=True)
-        except Exception as e:
-            logger.warning(f"Failed to get sub-accounts (may not be supported): {e}")
-            return []
+    # ============ Spot API Sub-Account Methods (Regular Users) ============
     
-    async def get_sub_account_balance(self, email: str) -> Dict[str, Any]:
+    async def get_sub_accounts_spot(
+        self, 
+        sub_account_id: Optional[str] = None,
+        page: int = 1, 
+        limit: int = 10
+    ) -> Dict[str, Any]:
         """
-        Get sub-account balance
+        Get sub-account list using Spot API (for regular users)
         
         Args:
-            email: Sub-account email
+            sub_account_id: Optional sub-account ID filter
+            page: Page number (default 1)
+            limit: Results per page (default 10)
             
         Returns:
-            Sub-account balance information
+            {
+                "subAccounts": [
+                    {
+                        "subAccountId": "123456",
+                        "note": "Trading account",
+                        "createTime": 1499865549590,
+                        "status": "ACTIVE"
+                    }
+                ],
+                "total": 1
+            }
+            
+        Raises:
+            Exception: If API request fails
         """
-        params = {"email": email}
-        return await self._request("GET", "/api/v3/sub-account/assets", params=params, signed=True)
+        params = {"page": page, "limit": limit}
+        if sub_account_id:
+            params["subAccountId"] = sub_account_id
+        
+        return await self._request("GET", "/api/v3/sub-account/list", 
+                                  params=params, signed=True)
+    
+    async def transfer_between_sub_accounts(
+        self,
+        from_account_type: str,
+        to_account_type: str,
+        asset: str,
+        amount: str,
+        from_account: Optional[str] = None,
+        to_account: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Universal transfer between sub-accounts (Spot API)
+        
+        Supports transfers between:
+        - Main account ↔ Sub-account
+        - Sub-account ↔ Sub-account
+        - Different account types: SPOT, MARGIN, ETF, CONTRACT
+        
+        Args:
+            from_account_type: Source account type (SPOT, MARGIN, ETF, CONTRACT)
+            to_account_type: Destination account type (SPOT, MARGIN, ETF, CONTRACT)
+            asset: Asset symbol (e.g., "USDT", "BTC")
+            amount: Transfer amount (string)
+            from_account: Source sub-account ID (optional, omit for main account)
+            to_account: Destination sub-account ID (optional, omit for main account)
+            
+        Returns:
+            {
+                "tranId": 123456789,
+                "createTime": 1499865549590
+            }
+            
+        Raises:
+            Exception: If API request fails
+        """
+        params = {
+            "fromAccountType": from_account_type,
+            "toAccountType": to_account_type,
+            "asset": asset,
+            "amount": amount
+        }
+        if from_account:
+            params["fromAccount"] = from_account
+        if to_account:
+            params["toAccount"] = to_account
+            
+        return await self._request("POST", "/api/v3/sub-account/universalTransfer",
+                                  params=params, signed=True)
+    
+    async def create_sub_account_api_key(
+        self,
+        sub_account_id: str,
+        note: str,
+        permissions: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Create API key for sub-account (Spot API)
+        
+        Args:
+            sub_account_id: Sub-account ID
+            note: API key description/note
+            permissions: Permission list (e.g., ["SPOT"])
+            
+        Returns:
+            {
+                "subAccountId": "123456",
+                "apiKey": "...",
+                "secretKey": "...",
+                "permissions": ["SPOT"]
+            }
+            
+        Raises:
+            Exception: If API request fails
+        """
+        params = {
+            "subAccountId": sub_account_id,
+            "note": note,
+            "permissions": permissions
+        }
+        return await self._request("POST", "/api/v3/sub-account/apiKey",
+                                  params=params, signed=True)
+    
+    async def delete_sub_account_api_key(
+        self,
+        sub_account_id: str,
+        api_key: str
+    ) -> Dict[str, Any]:
+        """
+        Delete sub-account API key (Spot API)
+        
+        Args:
+            sub_account_id: Sub-account ID
+            api_key: API key to delete
+            
+        Returns:
+            Success confirmation
+            
+        Raises:
+            Exception: If API request fails
+        """
+        params = {
+            "subAccountId": sub_account_id,
+            "apiKey": api_key
+        }
+        return await self._request("DELETE", "/api/v3/sub-account/apiKey",
+                                  params=params, signed=True)
+    
+    # ============ Broker API Sub-Account Methods (Broker Users) ============
+    
+    async def get_broker_sub_accounts(
+        self,
+        sub_account: Optional[str] = None,
+        page: int = 1,
+        limit: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Get Broker sub-account list (Broker API)
+        
+        Args:
+            sub_account: Optional sub-account name filter
+            page: Page number (default 1)
+            limit: Results per page (default 10)
+            
+        Returns:
+            {
+                "code": "0",
+                "message": "",
+                "data": [
+                    {
+                        "subAccount": "mexc1",
+                        "note": "Trading account",
+                        "timestamp": "1597026383085"
+                    }
+                ]
+            }
+            
+        Raises:
+            Exception: If API request fails or permissions insufficient
+        """
+        params = {
+            "page": page,
+            "limit": limit,
+            "timestamp": int(time.time() * 1000)
+        }
+        if sub_account:
+            params["subAccount"] = sub_account
+        return await self._request("GET", "/api/v3/broker/sub-account/list",
+                                  params=params, signed=True)
+    
+    async def get_broker_sub_account_assets(self, sub_account: str) -> Dict[str, Any]:
+        """
+        Query Broker sub-account assets (Broker API)
+        
+        Args:
+            sub_account: Sub-account name
+            
+        Returns:
+            {
+                "balances": [
+                    {
+                        "asset": "BTC",
+                        "free": "0.1",
+                        "locked": "0.2"
+                    }
+                ]
+            }
+            
+        Raises:
+            Exception: If API request fails
+        """
+        params = {
+            "subAccount": sub_account,
+            "timestamp": int(time.time() * 1000)
+        }
+        return await self._request("GET", "/api/v3/broker/sub-account/assets",
+                                  params=params, signed=True)
+    
+    async def broker_transfer_between_sub_accounts(
+        self,
+        from_account: str,
+        to_account: str,
+        asset: str,
+        amount: str
+    ) -> Dict[str, Any]:
+        """
+        Transfer between Broker sub-accounts (Broker API)
+        
+        Args:
+            from_account: Source sub-account name
+            to_account: Destination sub-account name
+            asset: Asset symbol (e.g., "USDT", "BTC")
+            amount: Transfer amount (string)
+            
+        Returns:
+            {
+                "tranId": 123456789,
+                "fromAccount": "subaccount1",
+                "toAccount": "subaccount2",
+                "status": "SUCCESS"
+            }
+            
+        Raises:
+            Exception: If API request fails
+        """
+        params = {
+            "fromAccount": from_account,
+            "toAccount": to_account,
+            "asset": asset,
+            "amount": amount,
+            "timestamp": int(time.time() * 1000)
+        }
+        return await self._request("POST", "/api/v3/broker/sub-account/transfer",
+                                  params=params, signed=True)
+    
+    async def create_broker_sub_account_api_key(
+        self,
+        sub_account: str,
+        permissions: str,
+        note: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create API key for Broker sub-account (Broker API)
+        
+        Args:
+            sub_account: Sub-account name
+            permissions: Permissions string (e.g., "SPOT_ACCOUNT_READ,SPOT_ACCOUNT_WRITE")
+            note: Optional note/description
+            
+        Returns:
+            {
+                "subAccount": "...",
+                "apikey": "...",
+                "secretKey": "...",
+                "permissions": "..."
+            }
+            
+        Raises:
+            Exception: If API request fails
+        """
+        params = {
+            "subAccount": sub_account,
+            "permissions": permissions,
+            "timestamp": int(time.time() * 1000)
+        }
+        if note:
+            params["note"] = note
+        return await self._request("POST", "/api/v3/broker/sub-account/apiKey",
+                                  params=params, signed=True)
+    
+    # ============ Unified Interface Methods ============
+    
+    async def get_sub_accounts(self) -> List[Dict[str, Any]]:
+        """
+        Unified sub-account list retrieval (auto-selects API based on configuration)
+        
+        Automatically chooses between:
+        - Spot API (/api/v3/sub-account/list) for regular users
+        - Broker API (/api/v3/broker/sub-account/list) for broker accounts
+        
+        Returns:
+            List of sub-accounts with their details
+            Format varies based on API mode:
+            - Spot API: [{"subAccountId": "123", "note": "...", "status": "ACTIVE"}]
+            - Broker API: [{"subAccount": "name", "note": "...", "timestamp": "..."}]
+            
+        Note:
+            Returns empty list if API request fails or permissions are insufficient.
+            Check logs for detailed error information.
+        """
+        from config import config
+        
+        try:
+            if config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER":
+                logger.info("Using Broker API for sub-accounts")
+                result = await self.get_broker_sub_accounts()
+                return result.get("data", [])
+            else:
+                logger.info("Using Spot API for sub-accounts")
+                result = await self.get_sub_accounts_spot()
+                return result.get("subAccounts", [])
+        except Exception as e:
+            logger.warning(f"Failed to get sub-accounts: {e}")
+            return []
+    
+    async def get_sub_account_balance(self, identifier: str) -> Dict[str, Any]:
+        """
+        Unified sub-account balance retrieval
+        
+        Args:
+            identifier: Sub-account identifier
+                - Spot API: numeric subAccountId
+                - Broker API: string subAccount name
+                
+        Returns:
+            Balance information for the sub-account
+            
+        Raises:
+            NotImplementedError: For Spot API (requires sub-account API key)
+            Exception: If API request fails
+            
+        Note:
+            Spot API does not support querying sub-account balance from main account.
+            You must use the sub-account's own API key to query its balance.
+        """
+        from config import config
+        
+        if config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER":
+            return await self.get_broker_sub_account_assets(identifier)
+        else:
+            raise NotImplementedError(
+                "Spot API does not support querying sub-account balance from main account. "
+                "You must use the sub-account's own API key to query its balance."
+            )
     
     async def close(self):
         """Close the HTTP client"""

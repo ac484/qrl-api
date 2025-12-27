@@ -294,6 +294,34 @@
             </div>
             <button class="refresh-btn" onclick="refreshData()">🔄 重新整理</button>
         </div>
+        
+        <div class="balance-details">
+            <h2>🎯 倉位分層</h2>
+            <div class="balance-row">
+                <span class="balance-label">核心倉位 (Core)</span>
+                <span class="balance-value" id="core-position">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">波段倉位 (Swing)</span>
+                <span class="balance-value" id="swing-position">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">機動倉位 (Active)</span>
+                <span class="balance-value" id="active-position">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">總倉位 (Total QRL)</span>
+                <span class="balance-value" id="total-position">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">核心倉位佔比</span>
+                <span class="balance-value" id="core-percent">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">最後調整時間</span>
+                <span class="balance-value" id="last-adjust">--</span>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -301,38 +329,98 @@
         
         async function fetchData(endpoint) {
             try {
+                console.log(`[FETCH] Calling ${endpoint}...`);
                 const response = await fetch(endpoint);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return await response.json();
+                
+                // Log response status
+                console.log(`[FETCH] ${endpoint} - Status: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    // Try to parse error details from response
+                    const errorData = await response.json().catch(() => null);
+                    console.error(`[FETCH] ${endpoint} - Error:`, errorData);
+                    
+                    // Show user-friendly error message
+                    if (response.status === 401) {
+                        console.error('❌ API Keys not configured or invalid');
+                        console.error('Help: Check MEXC_API_KEY and MEXC_SECRET_KEY in Cloud Run environment variables');
+                    } else if (response.status === 403) {
+                        console.error('❌ Insufficient permissions');
+                        console.error('Help: Ensure API keys have required permissions');
+                    } else if (response.status >= 500) {
+                        console.error('❌ Server error - MEXC API or backend issue');
+                    }
+                    
+                    throw new Error(`HTTP ${response.status}: ${errorData?.detail?.message || response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log(`[FETCH] ${endpoint} - Success:`, data);
+                return data;
+                
             } catch (error) {
-                console.error('Fetch error:', error);
+                console.error(`[FETCH] ${endpoint} - Exception:`, error);
                 return null;
             }
         }
         
         async function loadAccountBalance() {
+            console.log('=== LOADING ACCOUNT BALANCE ===');
             const data = await fetchData('/account/balance');
-            console.log('Account balance response:', data);
-            if (data && data.balances) {
-                // QRL Balance
-                const qrl = data.balances.QRL || { free: '0', locked: '0' };
-                const qrlTotal = parseFloat(qrl.free) + parseFloat(qrl.locked);
-                document.getElementById('qrl-balance').textContent = qrlTotal.toFixed(4);
-                document.getElementById('qrl-free').textContent = parseFloat(qrl.free).toFixed(4);
-                document.getElementById('qrl-locked').textContent = parseFloat(qrl.locked).toFixed(4);
-                
-                // USDT Balance
-                const usdt = data.balances.USDT || { free: '0', locked: '0' };
-                const usdtTotal = parseFloat(usdt.free) + parseFloat(usdt.locked);
-                document.getElementById('usdt-balance').textContent = usdtTotal.toFixed(2);
-                document.getElementById('usdt-free').textContent = parseFloat(usdt.free).toFixed(2);
-                document.getElementById('usdt-locked').textContent = parseFloat(usdt.locked).toFixed(2);
-                
-                console.log('Balances loaded:', { qrlTotal, usdtTotal });
-                return { qrlTotal, usdtTotal };
+            
+            // Check if request failed
+            if (!data) {
+                console.error('❌ Failed to fetch account balance - no response');
+                document.getElementById('qrl-balance').textContent = 'ERROR';
+                document.getElementById('qrl-balance').style.color = '#fc5c65';
+                document.getElementById('usdt-balance').textContent = 'ERROR';
+                document.getElementById('usdt-balance').style.color = '#fc5c65';
+                return null;
             }
-            console.error('Failed to load account balance - no data or no balances property');
-            return null;
+            
+            console.log('📊 Account balance response:', data);
+            
+            // Check if balances property exists
+            if (!data.balances) {
+                console.error('❌ No balances property in response');
+                console.error('Response data:', data);
+                document.getElementById('qrl-balance').textContent = 'N/A';
+                document.getElementById('usdt-balance').textContent = 'N/A';
+                return null;
+            }
+            
+            console.log('💰 Available assets:', Object.keys(data.balances));
+            
+            // QRL Balance
+            const qrl = data.balances.QRL || { free: '0', locked: '0' };
+            const qrlFree = parseFloat(qrl.free || '0');
+            const qrlLocked = parseFloat(qrl.locked || '0');
+            const qrlTotal = qrlFree + qrlLocked;
+            
+            console.log('QRL:', { free: qrlFree, locked: qrlLocked, total: qrlTotal });
+            
+            document.getElementById('qrl-balance').textContent = qrlTotal.toFixed(4);
+            document.getElementById('qrl-balance').style.color = ''; // Reset color
+            document.getElementById('qrl-free').textContent = qrlFree.toFixed(4);
+            document.getElementById('qrl-locked').textContent = qrlLocked.toFixed(4);
+            
+            // USDT Balance
+            const usdt = data.balances.USDT || { free: '0', locked: '0' };
+            const usdtFree = parseFloat(usdt.free || '0');
+            const usdtLocked = parseFloat(usdt.locked || '0');
+            const usdtTotal = usdtFree + usdtLocked;
+            
+            console.log('USDT:', { free: usdtFree, locked: usdtLocked, total: usdtTotal });
+            
+            document.getElementById('usdt-balance').textContent = usdtTotal.toFixed(2);
+            document.getElementById('usdt-balance').style.color = ''; // Reset color
+            document.getElementById('usdt-free').textContent = usdtFree.toFixed(2);
+            document.getElementById('usdt-locked').textContent = usdtLocked.toFixed(2);
+            
+            console.log('✅ Balances loaded successfully');
+            console.log('=== END ACCOUNT BALANCE ===');
+            
+            return { qrlTotal, usdtTotal };
         }
         
         async function loadPrice() {
@@ -363,27 +451,11 @@
                 if (data.position) {
                     console.log('Position data:', data.position);
                     
-                    // Update QRL balance from position data (source of truth)
-                    if (data.position.qrl_balance) {
-                        const qrlBalance = parseFloat(data.position.qrl_balance);
-                        if (qrlBalance > 0) {
-                            document.getElementById('qrl-balance').textContent = qrlBalance.toFixed(4);
-                            document.getElementById('qrl-free').textContent = qrlBalance.toFixed(4);
-                            document.getElementById('qrl-locked').textContent = '0.0000';
-                        }
-                    }
+                    // NOTE: Do NOT update balance from Redis position data
+                    // Balance should come from real-time API (/account/balance)
+                    // Redis position data may be stale (only updates when bot runs)
                     
-                    // Update USDT balance from position data (source of truth)
-                    if (data.position.usdt_balance) {
-                        const usdtBalance = parseFloat(data.position.usdt_balance);
-                        if (usdtBalance > 0) {
-                            document.getElementById('usdt-balance').textContent = usdtBalance.toFixed(2);
-                            document.getElementById('usdt-free').textContent = usdtBalance.toFixed(2);
-                            document.getElementById('usdt-locked').textContent = '0.00';
-                        }
-                    }
-                    
-                    // Update average cost
+                    // Update average cost (bot-specific analysis)
                     const avgCost = data.position.avg_cost;
                     if (avgCost && avgCost !== '0') {
                         document.getElementById('avg-cost').textContent = parseFloat(avgCost).toFixed(6);
@@ -391,7 +463,7 @@
                         document.getElementById('avg-cost').textContent = 'N/A';
                     }
                     
-                    // Update unrealized PnL
+                    // Update unrealized PnL (bot-specific analysis)
                     const unrealizedPnl = data.position.unrealized_pnl;
                     if (unrealizedPnl !== undefined && unrealizedPnl !== null) {
                         const pnlValue = parseFloat(unrealizedPnl);
@@ -406,22 +478,81 @@
                     console.error('No position data in status response');
                 }
                 
+                // Update position layers
+                if (data.position_layers) {
+                    console.log('Position layers data:', data.position_layers);
+                    const layers = data.position_layers;
+                    
+                    document.getElementById('core-position').textContent = 
+                        layers.core_qrl ? parseFloat(layers.core_qrl).toFixed(4) + ' QRL' : 'N/A';
+                    document.getElementById('swing-position').textContent = 
+                        layers.swing_qrl ? parseFloat(layers.swing_qrl).toFixed(4) + ' QRL' : 'N/A';
+                    document.getElementById('active-position').textContent = 
+                        layers.active_qrl ? parseFloat(layers.active_qrl).toFixed(4) + ' QRL' : 'N/A';
+                    document.getElementById('total-position').textContent = 
+                        layers.total_qrl ? parseFloat(layers.total_qrl).toFixed(4) + ' QRL' : 'N/A';
+                    document.getElementById('core-percent').textContent = 
+                        layers.core_percent ? (parseFloat(layers.core_percent) * 100).toFixed(2) + '%' : 'N/A';
+                    document.getElementById('last-adjust').textContent = 
+                        layers.last_adjust ? new Date(layers.last_adjust).toLocaleString('zh-TW') : 'N/A';
+                } else {
+                    console.log('No position layers data available');
+                    // Set default N/A values
+                    document.getElementById('core-position').textContent = 'N/A';
+                    document.getElementById('swing-position').textContent = 'N/A';
+                    document.getElementById('active-position').textContent = 'N/A';
+                    document.getElementById('total-position').textContent = 'N/A';
+                    document.getElementById('core-percent').textContent = 'N/A';
+                    document.getElementById('last-adjust').textContent = 'N/A';
+                }
+                
                 return data.position || {};
             }
             console.error('Failed to load status - no data');
             return {};
         }
         
-        async function loadSubAccounts() {
+async function loadSubAccounts() {
+            console.log('=== LOADING SUB-ACCOUNTS ===');
             const data = await fetchData('/account/sub-accounts');
-            if (data && data.sub_accounts && data.sub_accounts.length > 0) {
+            
+            if (!data) {
+                console.log('⚠️ No response from sub-accounts endpoint');
+                console.log('This is normal if API keys are not configured or lack permissions');
+                return;
+            }
+            
+            console.log('📋 Sub-accounts response:', data);
+            console.log(`Mode: ${data.mode || 'UNKNOWN'}`);
+            
+            if (data.sub_accounts && data.sub_accounts.length > 0) {
+                console.log(`✅ Found ${data.sub_accounts.length} sub-accounts (${data.mode} mode)`);
                 const select = document.getElementById('account-select');
+                
                 data.sub_accounts.forEach(account => {
                     const option = document.createElement('option');
-                    option.value = account.id || account.email;
-                    option.textContent = `子帳戶: ${account.email || account.id}`;
+                    
+                    // Handle different formats based on mode
+                    if (data.mode === 'BROKER') {
+                        // Broker API format: subAccount (string name)
+                        option.value = account.subAccount;
+                        option.textContent = `子帳戶: ${account.subAccount} - ${account.note || 'N/A'}`;
+                    } else {
+                        // Spot API format: subAccountId (numeric ID)
+                        option.value = account.subAccountId;
+                        option.textContent = `子帳戶: ${account.subAccountId} - ${account.note || 'N/A'} (${account.status || ''})`;
+                    }
+                    
                     select.appendChild(option);
                 });
+            } else {
+                console.log('ℹ️ No sub-accounts found or not available');
+                if (data.message) {
+                    console.log('Message:', data.message);
+                }
+                if (data.help) {
+                    console.log('Help:', data.help);
+                }
             }
         }
         
@@ -434,19 +565,21 @@
         
         async function refreshData() {
             // Load all data sources
-            const balances = await loadAccountBalance();
-            const price = await loadPrice();
-            const position = await loadStatus();
+            const balances = await loadAccountBalance();  // Real-time API balance (PRIMARY)
+            const price = await loadPrice();               // Current market price
+            const position = await loadStatus();           // Bot analytics only (avg_cost, PnL)
             
-            // Position data is source of truth (bot tracks exact trades)
-            if (position && price && (position.qrl_balance || position.usdt_balance)) {
+            // PRIMARY: Use real-time API balance (most accurate and up-to-date)
+            // API balance reflects all activities (bot trades + manual deposits/withdrawals)
+            if (balances && price) {
+                calculateTotalValue(balances.qrlTotal, balances.usdtTotal, price);
+            }
+            // FALLBACK: Only use Redis position data if API fails
+            // Redis data may be stale (only updates when bot runs)
+            else if (position && price && (position.qrl_balance || position.usdt_balance)) {
                 const qrlBal = parseFloat(position.qrl_balance || 0);
                 const usdtBal = parseFloat(position.usdt_balance || 0);
                 calculateTotalValue(qrlBal, usdtBal, price);
-            }
-            // Only fall back to API balance if position data not available
-            else if (balances && price) {
-                calculateTotalValue(balances.qrlTotal, balances.usdtTotal, price);
             }
         }
         

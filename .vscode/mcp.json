@@ -6,8 +6,8 @@
       "args": [
         "run",
         "-i",
-        "--name", "awesome-copilot",   // 固定名字
-        "--restart", "unless-stopped", // 自動重啟
+        "--name", "awesome-copilot",
+        "--restart", "unless-stopped",
         "ghcr.io/microsoft/mcp-dotnet-samples/awesome-copilot:latest"
       ]
     },
@@ -15,8 +15,8 @@
       "type": "http",
       "url": "https://mcp.context7.com/mcp",
       "headers": {
-        "CONTEXT7_API_KEY": "ctx7sk-a6b61fdc-d440-4e26-bcb0-7fd6807c4787"
-      },
+        "CONTEXT7_API_KEY": "${env:CONTEXT7_API_KEY}"
+      }
     }
   }
 }

@@ -2,7 +2,7 @@
 # 此配置文件定義了 3 個 Cloud Scheduler jobs
 # 用於 Google Cloud Run 的自動化任務調度
 
-# Job 1: 餘額同步 - 每分鐘執行一次
+# Job 1: 餘額同步 - 每 3 分鐘執行一次
 ---
 apiVersion: cloudscheduler.cnrm.cloud.google.com/v1beta1
 kind: CloudSchedulerJob
@@ -12,10 +12,10 @@ metadata:
     cnrm.cloud.google.com/project-id: "qrl-api"  # 替換為您的專案 ID
 spec:
   location: asia-southeast1
-  description: "Sync MEXC account balance to Redis every minute"
-  schedule: "* * * * *"  # 每分鐘執行
+  description: "Sync MEXC account balance to Redis every 3 minutes"
+  schedule: "*/3 * * * *"  # 每 3 分鐘執行
   timeZone: "Asia/Taipei"
-  attemptDeadline: "320s"
+  attemptDeadline: "60s"
   retryConfig:
     retryCount: 3
     maxRetryDuration: "0s"
@@ -31,7 +31,7 @@ spec:
     body: "{}"
 
 ---
-# Job 2: 價格更新 - 每分鐘執行一次
+# Job 2: 價格更新 - 每 3 分鐘執行一次
 apiVersion: cloudscheduler.cnrm.cloud.google.com/v1beta1
 kind: CloudSchedulerJob
 metadata:
@@ -40,10 +40,10 @@ metadata:
     cnrm.cloud.google.com/project-id: "qrl-api"  # 替換為您的專案 ID
 spec:
   location: asia-southeast1
-  description: "Update QRL/USDT price from MEXC every minute"
-  schedule: "* * * * *"  # 每分鐘執行
+  description: "Update QRL/USDT price from MEXC every 3 minutes"
+  schedule: "*/3 * * * *"  # 每 3 分鐘執行
   timeZone: "Asia/Taipei"
-  attemptDeadline: "320s"
+  attemptDeadline: "60s"
   retryConfig:
     retryCount: 3
     maxRetryDuration: "0s"
@@ -59,7 +59,7 @@ spec:
     body: "{}"
 
 ---
-# Job 3: 成本更新 - 每 5 分鐘執行一次
+# Job 3: 成本更新 - 每 15 分鐘執行一次
 apiVersion: cloudscheduler.cnrm.cloud.google.com/v1beta1
 kind: CloudSchedulerJob
 metadata:
@@ -68,10 +68,10 @@ metadata:
     cnrm.cloud.google.com/project-id: "qrl-api"  # 替換為您的專案 ID
 spec:
   location: asia-southeast1
-  description: "Update cost and PnL calculations every 5 minutes"
-  schedule: "*/5 * * * *"  # 每 5 分鐘執行
+  description: "Update cost and PnL calculations every 15 minutes"
+  schedule: "*/15 * * * *"  # 每 15 分鐘執行
   timeZone: "Asia/Taipei"
-  attemptDeadline: "320s"
+  attemptDeadline: "60s"
   retryConfig:
     retryCount: 3
     maxRetryDuration: "0s"

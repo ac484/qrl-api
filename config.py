@@ -35,6 +35,31 @@ class Config:
     MEXC_WS_URL: str = os.getenv("MEXC_WS_URL", "wss://wbs.mexc.com/ws")
     MEXC_TIMEOUT: int = int(os.getenv("MEXC_TIMEOUT", "10"))
     
+    # Sub-Account Configuration
+    # MEXC v3 API supports two distinct sub-account systems:
+    # 1. SPOT API: For regular users (uses numeric subAccountId)
+    # 2. BROKER API: For broker/institutional accounts (uses string subAccount name)
+    SUB_ACCOUNT_MODE: str = os.getenv("SUB_ACCOUNT_MODE", "SPOT")  # SPOT or BROKER
+    IS_BROKER_ACCOUNT: bool = os.getenv("IS_BROKER_ACCOUNT", "false").lower() == "true"
+    
+    # Spot API sub-account (regular users) - uses numeric ID
+    SUB_ACCOUNT_ID: Optional[str] = os.getenv("SUB_ACCOUNT_ID")
+    
+    # Broker API sub-account (broker users) - uses string name
+    SUB_ACCOUNT_NAME: Optional[str] = os.getenv("SUB_ACCOUNT_NAME")
+    
+    @property
+    def active_sub_account_identifier(self) -> Optional[str]:
+        """
+        Return the active sub-account identifier based on current mode
+        
+        Returns:
+            SUB_ACCOUNT_NAME for BROKER mode, SUB_ACCOUNT_ID for SPOT mode
+        """
+        if self.SUB_ACCOUNT_MODE == "BROKER" or self.IS_BROKER_ACCOUNT:
+            return self.SUB_ACCOUNT_NAME
+        return self.SUB_ACCOUNT_ID
+    
     # Trading Configuration
     TRADING_PAIR: str = os.getenv("TRADING_PAIR", "QRLUSDT")
     TRADING_SYMBOL: str = os.getenv("TRADING_SYMBOL", "QRLUSDT")  # MEXC format
@@ -95,6 +120,9 @@ class Config:
             "max_daily_trades": cls.MAX_DAILY_TRADES,
             "core_position_pct": cls.CORE_POSITION_PCT,
             "usdt_reserve_pct": cls.USDT_RESERVE_PCT,
+            "sub_account_configured": bool(cls.SUB_ACCOUNT_ID or cls.SUB_ACCOUNT_NAME),
+            "sub_account_mode": cls.SUB_ACCOUNT_MODE,
+            "is_broker_account": cls.IS_BROKER_ACCOUNT,
         }
 
 
