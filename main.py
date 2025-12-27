@@ -103,13 +103,14 @@ def dashboard():
             pnl_percent = ((latest_price / avg_cost) - 1) * 100
         
         # Get real balance from MEXC API
-        mexc_balance = mexc_client.get_account_balance()
-        if mexc_balance:
-            qrl_balance_from_api = mexc_balance.get('QRL', 0)
-            usdt_balance = mexc_balance.get('USDT', 0)
-            
-            # Update total_qrl if we got real data from API and it's different
-            if qrl_balance_from_api > 0:
+        usdt_balance = 0
+        try:
+            mexc_balance = mexc_client.get_account_balance()
+            if mexc_balance and mexc_balance.get('QRL', 0) > 0:
+                qrl_balance_from_api = mexc_balance.get('QRL', 0)
+                usdt_balance = mexc_balance.get('USDT', 0)
+                
+                # Update total_qrl with real data from API
                 total_qrl = qrl_balance_from_api
                 # Recalculate position layers based on actual balance
                 if not layers_data:
@@ -119,16 +120,28 @@ def dashboard():
                     core_percent = 70
                     swing_percent = 20
                     active_percent = 10
-        else:
-            # Fallback to mock data if API fails
+                logger.info(f"Dashboard: Using real MEXC balance - QRL: {qrl_balance_from_api}, USDT: {usdt_balance}")
+            else:
+                # Fallback to mock data if API fails or returns no balance
+                usdt_balance = 500
+                logger.warning("Dashboard: Using fallback mock data for balance")
+        except Exception as e:
+            logger.error(f"Dashboard: Error fetching MEXC balance: {e}")
             usdt_balance = 500
         
-        # Get real price from MEXC API
-        mexc_price = mexc_client.get_ticker_price('QRLUSDT')
-        if mexc_price:
-            latest_price = mexc_price
-            # Update price in Redis for other components
-            redis_client.set_latest_price(latest_price)
+        # Get real price from MEXC API (use correct symbol format with slash)
+        try:
+            mexc_price = mexc_client.get_ticker_price('QRL/USDT')
+            if mexc_price and mexc_price > 0:
+                latest_price = mexc_price
+                # Update price in Redis for other components
+                redis_client.set_latest_price(latest_price)
+                logger.info(f"Dashboard: Using real MEXC price: {latest_price}")
+            else:
+                logger.warning(f"Dashboard: MEXC price not available, using Redis price: {latest_price}")
+        except Exception as e:
+            logger.error(f"Dashboard: Error fetching MEXC price: {e}")
+            logger.warning(f"Dashboard: Using Redis price: {latest_price}")
         
         total_value = (total_qrl * latest_price) + usdt_balance if latest_price > 0 else usdt_balance
         usdt_reserve_percent = (usdt_balance / total_value * 100) if total_value > 0 else 0
