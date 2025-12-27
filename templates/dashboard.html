@@ -362,6 +362,27 @@
                 
                 if (data.position) {
                     console.log('Position data:', data.position);
+                    
+                    // Update QRL balance from position data (source of truth)
+                    if (data.position.qrl_balance) {
+                        const qrlBalance = parseFloat(data.position.qrl_balance);
+                        if (qrlBalance > 0) {
+                            document.getElementById('qrl-balance').textContent = qrlBalance.toFixed(4);
+                            document.getElementById('qrl-free').textContent = qrlBalance.toFixed(4);
+                            document.getElementById('qrl-locked').textContent = '0.0000';
+                        }
+                    }
+                    
+                    // Update USDT balance from position data (source of truth)
+                    if (data.position.usdt_balance) {
+                        const usdtBalance = parseFloat(data.position.usdt_balance);
+                        if (usdtBalance > 0) {
+                            document.getElementById('usdt-balance').textContent = usdtBalance.toFixed(2);
+                            document.getElementById('usdt-free').textContent = usdtBalance.toFixed(2);
+                            document.getElementById('usdt-locked').textContent = '0.00';
+                        }
+                    }
+                    
                     // Update average cost
                     const avgCost = data.position.avg_cost;
                     if (avgCost && avgCost !== '0') {
@@ -412,20 +433,20 @@
         }
         
         async function refreshData() {
-            // ALWAYS try to get real-time data from API first
+            // Load all data sources
             const balances = await loadAccountBalance();
             const price = await loadPrice();
             const position = await loadStatus();
             
-            // Use real-time API balance if available (most accurate)
-            if (balances && price) {
-                calculateTotalValue(balances.qrlTotal, balances.usdtTotal, price);
-            }
-            // Only fall back to position data if API call failed
-            else if (position && price && (position.qrl_balance || position.usdt_balance)) {
+            // Position data is source of truth (bot tracks exact trades)
+            if (position && price && (position.qrl_balance || position.usdt_balance)) {
                 const qrlBal = parseFloat(position.qrl_balance || 0);
                 const usdtBal = parseFloat(position.usdt_balance || 0);
                 calculateTotalValue(qrlBal, usdtBal, price);
+            }
+            // Only fall back to API balance if position data not available
+            else if (balances && price) {
+                calculateTotalValue(balances.qrlTotal, balances.usdtTotal, price);
             }
         }
         
