@@ -3,6 +3,7 @@ MEXC API Client for Spot Trading (v3)
 Async implementation using httpx
 Based on official MEXC API documentation
 """
+import asyncio
 import hashlib
 import hmac
 import time
@@ -81,16 +82,18 @@ class MEXCClient:
         method: str,
         endpoint: str,
         params: Optional[Dict[str, Any]] = None,
-        signed: bool = False
+        signed: bool = False,
+        max_retries: int = 3
     ) -> Dict[str, Any]:
         """
-        Make async HTTP request to MEXC API
+        Make async HTTP request to MEXC API with retry logic
         
         Args:
             method: HTTP method (GET, POST, DELETE)
             endpoint: API endpoint
             params: Request parameters
             signed: Whether request requires signature
+            max_retries: Maximum number of retry attempts
             
         Returns:
             API response as dictionary
@@ -106,29 +109,53 @@ class MEXCClient:
             params["timestamp"] = int(time.time() * 1000)
             params["signature"] = self._generate_signature(params)
         
-        try:
-            # Create client if not exists
-            if not self._client:
-                self._client = httpx.AsyncClient(
-                    headers=self.headers,
-                    timeout=self.timeout
-                )
-            
-            if method == "GET":
-                response = await self._client.get(url, params=params)
-            elif method == "POST":
-                response = await self._client.post(url, params=params)
-            elif method == "DELETE":
-                response = await self._client.delete(url, params=params)
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
-            
-            response.raise_for_status()
-            return response.json()
+        last_exception = None
         
-        except httpx.HTTPError as e:
-            logger.error(f"MEXC API request failed: {e}")
-            raise
+        for attempt in range(max_retries):
+            try:
+                # Create client if not exists
+                if not self._client:
+                    self._client = httpx.AsyncClient(
+                        headers=self.headers,
+                        timeout=self.timeout
+                    )
+                
+                if method == "GET":
+                    response = await self._client.get(url, params=params)
+                elif method == "POST":
+                    response = await self._client.post(url, params=params)
+                elif method == "DELETE":
+                    response = await self._client.delete(url, params=params)
+                else:
+                    raise ValueError(f"Unsupported HTTP method: {method}")
+                
+                response.raise_for_status()
+                return response.json()
+            
+            except httpx.HTTPStatusError as e:
+                last_exception = e
+                if e.response.status_code in [429, 503, 504]:
+                    # Rate limit or server error - retry with exponential backoff
+                    wait_time = 2 ** attempt
+                    logger.warning(f"MEXC API error {e.response.status_code}, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(wait_time)
+                        continue
+                raise
+            
+            except httpx.RequestError as e:
+                last_exception = e
+                # Network error - retry with exponential backoff
+                wait_time = 2 ** attempt
+                logger.warning(f"MEXC API network error: {e}, retrying in {wait_time}s (attempt {attempt + 1}/{max_retries})")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(wait_time)
+                    continue
+                raise
+        
+        # If we get here, all retries failed
+        logger.error(f"MEXC API request failed after {max_retries} attempts: {last_exception}")
+        raise last_exception if last_exception else Exception("Unknown error")
     
     # ===== Public Market Data Endpoints =====
     

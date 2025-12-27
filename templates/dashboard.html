@@ -294,6 +294,34 @@
             </div>
             <button class="refresh-btn" onclick="refreshData()">🔄 重新整理</button>
         </div>
+        
+        <div class="balance-details">
+            <h2>🎯 倉位分層</h2>
+            <div class="balance-row">
+                <span class="balance-label">核心倉位 (Core)</span>
+                <span class="balance-value" id="core-position">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">波段倉位 (Swing)</span>
+                <span class="balance-value" id="swing-position">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">機動倉位 (Active)</span>
+                <span class="balance-value" id="active-position">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">總倉位 (Total QRL)</span>
+                <span class="balance-value" id="total-position">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">核心倉位佔比</span>
+                <span class="balance-value" id="core-percent">--</span>
+            </div>
+            <div class="balance-row">
+                <span class="balance-label">最後調整時間</span>
+                <span class="balance-value" id="last-adjust">--</span>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -388,6 +416,34 @@
                     }
                 } else {
                     console.error('No position data in status response');
+                }
+                
+                // Update position layers
+                if (data.position_layers) {
+                    console.log('Position layers data:', data.position_layers);
+                    const layers = data.position_layers;
+                    
+                    document.getElementById('core-position').textContent = 
+                        layers.core_qrl ? parseFloat(layers.core_qrl).toFixed(4) + ' QRL' : 'N/A';
+                    document.getElementById('swing-position').textContent = 
+                        layers.swing_qrl ? parseFloat(layers.swing_qrl).toFixed(4) + ' QRL' : 'N/A';
+                    document.getElementById('active-position').textContent = 
+                        layers.active_qrl ? parseFloat(layers.active_qrl).toFixed(4) + ' QRL' : 'N/A';
+                    document.getElementById('total-position').textContent = 
+                        layers.total_qrl ? parseFloat(layers.total_qrl).toFixed(4) + ' QRL' : 'N/A';
+                    document.getElementById('core-percent').textContent = 
+                        layers.core_percent ? (parseFloat(layers.core_percent) * 100).toFixed(2) + '%' : 'N/A';
+                    document.getElementById('last-adjust').textContent = 
+                        layers.last_adjust ? new Date(layers.last_adjust).toLocaleString('zh-TW') : 'N/A';
+                } else {
+                    console.log('No position layers data available');
+                    // Set default N/A values
+                    document.getElementById('core-position').textContent = 'N/A';
+                    document.getElementById('swing-position').textContent = 'N/A';
+                    document.getElementById('active-position').textContent = 'N/A';
+                    document.getElementById('total-position').textContent = 'N/A';
+                    document.getElementById('core-percent').textContent = 'N/A';
+                    document.getElementById('last-adjust').textContent = 'N/A';
                 }
                 
                 return data.position || {};
