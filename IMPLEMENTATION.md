@@ -154,13 +154,13 @@ python main.py
 ### Cloud Run 部署
 ```bash
 # 1. 構建並推送映像
-gcloud builds submit --tag asia-east1-docker.pkg.dev/PROJECT_ID/qrl-trading-api/qrl-trading-api:latest
+gcloud builds submit --tag asia-southeast1-docker.pkg.dev/PROJECT_ID/qrl-trading-api/qrl-trading-api:latest
 
 # 2. 部署服務
 gcloud run deploy qrl-trading-api \
-  --image asia-east1-docker.pkg.dev/PROJECT_ID/qrl-trading-api/qrl-trading-api:latest \
+  --image asia-southeast1-docker.pkg.dev/PROJECT_ID/qrl-trading-api/qrl-trading-api:latest \
   --platform managed \
-  --region asia-east1 \
+  --region asia-southeast1 \
   --set-env-vars REDIS_HOST=REDIS_IP,REDIS_PORT=6379
 
 # 3. 設置定時觸發

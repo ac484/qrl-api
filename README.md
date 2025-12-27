@@ -130,13 +130,13 @@ gcloud services enable redis.googleapis.com
 ```bash
 gcloud redis instances create qrl-redis \
   --size=1 \
-  --region=asia-east1 \
+  --region=asia-southeast1 \
   --redis-version=redis_7_0
 ```
 
 獲取 Redis IP：
 ```bash
-gcloud redis instances describe qrl-redis --region=asia-east1
+gcloud redis instances describe qrl-redis --region=asia-southeast1
 ```
 
 ### 部署到 Cloud Run
@@ -146,18 +146,18 @@ gcloud redis instances describe qrl-redis --region=asia-east1
 # 創建 Artifact Registry 倉庫
 gcloud artifacts repositories create qrl-trading-api \
   --repository-format=docker \
-  --location=asia-east1
+  --location=asia-southeast1
 
 # 構建並推送
-gcloud builds submit --tag asia-east1-docker.pkg.dev/PROJECT_ID/qrl-trading-api/qrl-trading-api:latest
+gcloud builds submit --tag asia-southeast1-docker.pkg.dev/PROJECT_ID/qrl-trading-api/qrl-trading-api:latest
 ```
 
 2. **部署 Cloud Run 服務**
 ```bash
 gcloud run deploy qrl-trading-api \
-  --image asia-east1-docker.pkg.dev/PROJECT_ID/qrl-trading-api/qrl-trading-api:latest \
+  --image asia-southeast1-docker.pkg.dev/PROJECT_ID/qrl-trading-api/qrl-trading-api:latest \
   --platform managed \
-  --region asia-east1 \
+  --region asia-southeast1 \
   --allow-unauthenticated \
   --vpc-connector YOUR_VPC_CONNECTOR \
   --set-env-vars REDIS_HOST=REDIS_IP,REDIS_PORT=6379 \
@@ -173,7 +173,7 @@ gcloud scheduler jobs create http qrl-trading-api-trigger \
   --schedule="*/1 * * * *" \
   --uri="https://YOUR_CLOUD_RUN_URL/execute" \
   --http-method=POST \
-  --location=asia-east1
+  --location=asia-southeast1
 ```
 
 ## 🔧 配置說明
