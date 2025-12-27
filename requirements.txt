@@ -1,0 +1,27 @@
+# Web Framework
+Flask==3.0.0
+gunicorn==21.2.0
+
+# HTTP Client
+requests==2.31.0
+
+# Redis Client
+redis==5.0.1
+
+# WebSocket
+websocket-client==1.6.4
+
+# Cryptography for API signing
+cryptography==41.0.7
+
+# Environment variables
+python-dotenv==1.0.0
+
+# JSON handling
+orjson==3.9.10
+
+# Datetime utilities
+python-dateutil==2.8.2
+
+# Protobuf for WebSocket
+protobuf==4.25.1
