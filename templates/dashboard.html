@@ -219,21 +219,9 @@
             50% { opacity: 0.5; }
         }
         
-        .controls {
-            background: white;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-top: 20px;
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
+        .btn-info {
+            background: #4299e1;
+            color: white;
             padding: 10px 20px;
             border: none;
             border-radius: 8px;
@@ -243,29 +231,10 @@
             transition: all 0.2s;
         }
         
-        .btn:hover {
+        .btn-info:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-        }
-        
-        .btn-primary {
-            background: #48bb78;
-            color: white;
-        }
-        
-        .btn-warning {
-            background: #ed8936;
-            color: white;
-        }
-        
-        .btn-danger {
-            background: #f56565;
-            color: white;
-        }
-        
-        .btn-info {
-            background: #4299e1;
-            color: white;
+            background: #3182ce;
         }
     </style>
 </head>
@@ -380,20 +349,10 @@
             </div>
         </div>
 
-        <!-- Controls -->
-        <div class="controls">
-            <div class="card-title">⚙️ 機器人控制</div>
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="controlBot('start')">▶️ 啟動</button>
-                <button class="btn btn-warning" onclick="controlBot('pause')">⏸️ 暫停</button>
-                <button class="btn btn-danger" onclick="controlBot('stop')">⏹️ 停止</button>
-                <button class="btn btn-info" onclick="location.reload()">🔄 刷新</button>
-            </div>
-        </div>
-
         <!-- Refresh Info -->
         <div class="refresh-info">
             <span class="auto-refresh">●</span> 頁面每 30 秒自動刷新 · 最後更新: {{ update_time }}
+            <button class="btn btn-info" onclick="location.reload()" style="margin-left: 20px; padding: 6px 16px; font-size: 12px;">🔄 手動刷新</button>
         </div>
     </div>
 
@@ -402,25 +361,6 @@
         setTimeout(function() {
             location.reload();
         }, 30000);
-
-        // Control bot function
-        function controlBot(action) {
-            fetch('/control', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ action: action })
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message || '操作成功');
-                location.reload();
-            })
-            .catch(error => {
-                alert('操作失敗: ' + error);
-            });
-        }
     </script>
 </body>
 </html>
