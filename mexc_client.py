@@ -1,5 +1,6 @@
 """
 MEXC API Client for Spot Trading (v3)
+Async implementation using httpx
 Based on official MEXC API documentation
 """
 import hashlib
@@ -9,9 +10,7 @@ import logging
 from typing import Dict, List, Optional, Any
 from urllib.parse import urlencode
 
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+import httpx
 
 from config import config
 
@@ -19,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class MEXCClient:
-    """MEXC Spot API v3 Client"""
+    """MEXC Spot API v3 Client (Async)"""
     
     def __init__(self, api_key: Optional[str] = None, secret_key: Optional[str] = None):
         """
@@ -34,24 +33,30 @@ class MEXCClient:
         self.base_url = config.MEXC_BASE_URL
         self.timeout = config.MEXC_TIMEOUT
         
-        # Configure session with retry strategy
-        self.session = requests.Session()
-        retry_strategy = Retry(
-            total=3,
-            status_forcelist=[429, 500, 502, 503, 504],
-            backoff_factor=1,
-            allowed_methods=["GET", "POST", "DELETE"]
-        )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        self.session.mount("https://", adapter)
-        self.session.mount("http://", adapter)
+        # Default headers
+        self.headers = {
+            "Content-Type": "application/json"
+        }
         
-        # Set default headers
         if self.api_key:
-            self.session.headers.update({
-                "X-MEXC-APIKEY": self.api_key,
-                "Content-Type": "application/json"
-            })
+            self.headers["X-MEXC-APIKEY"] = self.api_key
+        
+        # Client will be created per request or reused
+        self._client: Optional[httpx.AsyncClient] = None
+    
+    async def __aenter__(self):
+        """Async context manager entry"""
+        self._client = httpx.AsyncClient(
+            headers=self.headers,
+            timeout=self.timeout,
+            limits=httpx.Limits(max_keepalive_connections=5, max_connections=10)
+        )
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit"""
+        if self._client:
+            await self._client.aclose()
     
     def _generate_signature(self, params: Dict[str, Any]) -> str:
         """
@@ -71,7 +76,7 @@ class MEXCClient:
         ).hexdigest()
         return signature
     
-    def _request(
+    async def _request(
         self,
         method: str,
         endpoint: str,
@@ -79,7 +84,7 @@ class MEXCClient:
         signed: bool = False
     ) -> Dict[str, Any]:
         """
-        Make HTTP request to MEXC API
+        Make async HTTP request to MEXC API
         
         Args:
             method: HTTP method (GET, POST, DELETE)
@@ -102,33 +107,40 @@ class MEXCClient:
             params["signature"] = self._generate_signature(params)
         
         try:
+            # Create client if not exists
+            if not self._client:
+                self._client = httpx.AsyncClient(
+                    headers=self.headers,
+                    timeout=self.timeout
+                )
+            
             if method == "GET":
-                response = self.session.get(url, params=params, timeout=self.timeout)
+                response = await self._client.get(url, params=params)
             elif method == "POST":
-                response = self.session.post(url, params=params, timeout=self.timeout)
+                response = await self._client.post(url, params=params)
             elif method == "DELETE":
-                response = self.session.delete(url, params=params, timeout=self.timeout)
+                response = await self._client.delete(url, params=params)
             else:
                 raise ValueError(f"Unsupported HTTP method: {method}")
             
             response.raise_for_status()
             return response.json()
         
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             logger.error(f"MEXC API request failed: {e}")
             raise
     
     # ===== Public Market Data Endpoints =====
     
-    def ping(self) -> Dict[str, Any]:
+    async def ping(self) -> Dict[str, Any]:
         """Test connectivity to MEXC API"""
-        return self._request("GET", "/api/v3/ping")
+        return await self._request("GET", "/api/v3/ping")
     
-    def get_server_time(self) -> Dict[str, Any]:
+    async def get_server_time(self) -> Dict[str, Any]:
         """Get current server time"""
-        return self._request("GET", "/api/v3/time")
+        return await self._request("GET", "/api/v3/time")
     
-    def get_exchange_info(self, symbol: Optional[str] = None) -> Dict[str, Any]:
+    async def get_exchange_info(self, symbol: Optional[str] = None) -> Dict[str, Any]:
         """
         Get exchange trading rules and symbol information
         
@@ -138,9 +150,9 @@ class MEXCClient:
         params = {}
         if symbol:
             params["symbol"] = symbol
-        return self._request("GET", "/api/v3/exchangeInfo", params=params)
+        return await self._request("GET", "/api/v3/exchangeInfo", params=params)
     
-    def get_ticker_24hr(self, symbol: str) -> Dict[str, Any]:
+    async def get_ticker_24hr(self, symbol: str) -> Dict[str, Any]:
         """
         Get 24hr ticker price change statistics
         
@@ -148,9 +160,9 @@ class MEXCClient:
             symbol: Trading symbol (e.g., "QRLUSDT")
         """
         params = {"symbol": symbol}
-        return self._request("GET", "/api/v3/ticker/24hr", params=params)
+        return await self._request("GET", "/api/v3/ticker/24hr", params=params)
     
-    def get_ticker_price(self, symbol: str) -> Dict[str, Any]:
+    async def get_ticker_price(self, symbol: str) -> Dict[str, Any]:
         """
         Get latest price for a symbol
         
@@ -158,9 +170,9 @@ class MEXCClient:
             symbol: Trading symbol (e.g., "QRLUSDT")
         """
         params = {"symbol": symbol}
-        return self._request("GET", "/api/v3/ticker/price", params=params)
+        return await self._request("GET", "/api/v3/ticker/price", params=params)
     
-    def get_order_book(self, symbol: str, limit: int = 100) -> Dict[str, Any]:
+    async def get_order_book(self, symbol: str, limit: int = 100) -> Dict[str, Any]:
         """
         Get order book depth
         
@@ -169,9 +181,9 @@ class MEXCClient:
             limit: Depth limit (default 100, max 5000)
         """
         params = {"symbol": symbol, "limit": limit}
-        return self._request("GET", "/api/v3/depth", params=params)
+        return await self._request("GET", "/api/v3/depth", params=params)
     
-    def get_recent_trades(self, symbol: str, limit: int = 500) -> List[Dict[str, Any]]:
+    async def get_recent_trades(self, symbol: str, limit: int = 500) -> List[Dict[str, Any]]:
         """
         Get recent trades
         
@@ -180,9 +192,9 @@ class MEXCClient:
             limit: Number of trades (default 500, max 1000)
         """
         params = {"symbol": symbol, "limit": limit}
-        return self._request("GET", "/api/v3/trades", params=params)
+        return await self._request("GET", "/api/v3/trades", params=params)
     
-    def get_klines(
+    async def get_klines(
         self,
         symbol: str,
         interval: str,
@@ -205,22 +217,22 @@ class MEXCClient:
             params["startTime"] = start_time
         if end_time:
             params["endTime"] = end_time
-        return self._request("GET", "/api/v3/klines", params=params)
+        return await self._request("GET", "/api/v3/klines", params=params)
     
     # ===== Account Endpoints (Authenticated) =====
     
-    def get_account_info(self) -> Dict[str, Any]:
+    async def get_account_info(self) -> Dict[str, Any]:
         """Get current account information"""
-        return self._request("GET", "/api/v3/account", signed=True)
+        return await self._request("GET", "/api/v3/account", signed=True)
     
-    def get_asset_balance(self, asset: Optional[str] = None) -> Dict[str, Any]:
+    async def get_asset_balance(self, asset: Optional[str] = None) -> Dict[str, Any]:
         """
         Get account asset balance
         
         Args:
             asset: Specific asset (e.g., "QRL", "USDT"). If None, returns all balances.
         """
-        account_info = self.get_account_info()
+        account_info = await self.get_account_info()
         
         if asset:
             for balance in account_info.get("balances", []):
@@ -232,7 +244,7 @@ class MEXCClient:
     
     # ===== Trading Endpoints (Authenticated) =====
     
-    def create_order(
+    async def create_order(
         self,
         symbol: str,
         side: str,
@@ -269,9 +281,9 @@ class MEXCClient:
         if order_type == "LIMIT":
             params["timeInForce"] = time_in_force
         
-        return self._request("POST", "/api/v3/order", params=params, signed=True)
+        return await self._request("POST", "/api/v3/order", params=params, signed=True)
     
-    def cancel_order(self, symbol: str, order_id: Optional[str] = None, orig_client_order_id: Optional[str] = None) -> Dict[str, Any]:
+    async def cancel_order(self, symbol: str, order_id: Optional[str] = None, orig_client_order_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Cancel an active order
         
@@ -286,9 +298,9 @@ class MEXCClient:
         if orig_client_order_id:
             params["origClientOrderId"] = orig_client_order_id
         
-        return self._request("DELETE", "/api/v3/order", params=params, signed=True)
+        return await self._request("DELETE", "/api/v3/order", params=params, signed=True)
     
-    def get_order(self, symbol: str, order_id: Optional[str] = None, orig_client_order_id: Optional[str] = None) -> Dict[str, Any]:
+    async def get_order(self, symbol: str, order_id: Optional[str] = None, orig_client_order_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Check an order's status
         
@@ -303,9 +315,9 @@ class MEXCClient:
         if orig_client_order_id:
             params["origClientOrderId"] = orig_client_order_id
         
-        return self._request("GET", "/api/v3/order", params=params, signed=True)
+        return await self._request("GET", "/api/v3/order", params=params, signed=True)
     
-    def get_open_orders(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
+    async def get_open_orders(self, symbol: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Get all open orders
         
@@ -316,9 +328,9 @@ class MEXCClient:
         if symbol:
             params["symbol"] = symbol
         
-        return self._request("GET", "/api/v3/openOrders", params=params, signed=True)
+        return await self._request("GET", "/api/v3/openOrders", params=params, signed=True)
     
-    def get_all_orders(self, symbol: str, order_id: Optional[str] = None, start_time: Optional[int] = None, end_time: Optional[int] = None, limit: int = 500) -> List[Dict[str, Any]]:
+    async def get_all_orders(self, symbol: str, order_id: Optional[str] = None, start_time: Optional[int] = None, end_time: Optional[int] = None, limit: int = 500) -> List[Dict[str, Any]]:
         """
         Get all account orders (active, canceled, or filled)
         
@@ -337,9 +349,9 @@ class MEXCClient:
         if end_time:
             params["endTime"] = end_time
         
-        return self._request("GET", "/api/v3/allOrders", params=params, signed=True)
+        return await self._request("GET", "/api/v3/allOrders", params=params, signed=True)
     
-    def get_my_trades(self, symbol: str, start_time: Optional[int] = None, end_time: Optional[int] = None, limit: int = 500) -> List[Dict[str, Any]]:
+    async def get_my_trades(self, symbol: str, start_time: Optional[int] = None, end_time: Optional[int] = None, limit: int = 500) -> List[Dict[str, Any]]:
         """
         Get account trade list
         
@@ -355,7 +367,13 @@ class MEXCClient:
         if end_time:
             params["endTime"] = end_time
         
-        return self._request("GET", "/api/v3/myTrades", params=params, signed=True)
+        return await self._request("GET", "/api/v3/myTrades", params=params, signed=True)
+    
+    async def close(self):
+        """Close the HTTP client"""
+        if self._client:
+            await self._client.aclose()
+            self._client = None
 
 
 # Singleton instance
