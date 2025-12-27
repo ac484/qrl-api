@@ -228,6 +228,21 @@ qrl-api/
 - [MEXC API SDK](https://github.com/mexcdevelop/mexc-api-sdk)
 - [WebSocket 協議](https://github.com/mexcdevelop/websocket-proto)
 
+## 疑難排解
+
+遇到問題？查看我們的 **[疑難排解指南](./TROUBLESHOOTING.md)** 了解常見問題和解決方案：
+
+- 🔴 餘額顯示錯誤或卡住
+- 🔴 子帳戶無法載入
+- 🔴 機器人無法交易
+- 🔧 詳細除錯步驟
+- 📋 部署前檢查清單
+
+**常見問題快速連結:**
+- [API 密鑰配置](./TROUBLESHOOTING.md#api-keys-not-configured-)
+- [子帳戶權限](./TROUBLESHOOTING.md#not-a-broker-account-)
+- [除錯步驟](./TROUBLESHOOTING.md#-debugging-steps)
+
 ## 安全注意事項
 
 ⚠️ **重要**:
@@ -243,4 +258,7 @@ MIT License
 
 ## 支援
 
-如有問題，請提交 GitHub Issue。
+如有問題，請：
+1. 查看 [疑難排解指南](./TROUBLESHOOTING.md)
+2. 查看 [現有 Issues](https://github.com/7Spade/qrl-api/issues)
+3. 提交新的 [GitHub Issue](https://github.com/7Spade/qrl-api/issues/new)

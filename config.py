@@ -35,6 +35,10 @@ class Config:
     MEXC_WS_URL: str = os.getenv("MEXC_WS_URL", "wss://wbs.mexc.com/ws")
     MEXC_TIMEOUT: int = int(os.getenv("MEXC_TIMEOUT", "10"))
     
+    # Sub-Account Configuration
+    SUB_ACCOUNT_EMAIL: Optional[str] = os.getenv("SUB_ACCOUNT_EMAIL")
+    SUB_ACCOUNT_ID: Optional[str] = os.getenv("SUB_ACCOUNT_ID")
+    
     # Trading Configuration
     TRADING_PAIR: str = os.getenv("TRADING_PAIR", "QRLUSDT")
     TRADING_SYMBOL: str = os.getenv("TRADING_SYMBOL", "QRLUSDT")  # MEXC format
@@ -95,6 +99,7 @@ class Config:
             "max_daily_trades": cls.MAX_DAILY_TRADES,
             "core_position_pct": cls.CORE_POSITION_PCT,
             "usdt_reserve_pct": cls.USDT_RESERVE_PCT,
+            "sub_account_configured": bool(cls.SUB_ACCOUNT_EMAIL or cls.SUB_ACCOUNT_ID),
         }
 
 

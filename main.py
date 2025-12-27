@@ -355,61 +355,254 @@ async def get_price(symbol: str):
 
 @app.get("/account/balance")
 async def get_account_balance():
-    """Get account balance (requires API keys)"""
+    """
+    Get account balance (requires API keys)
+    
+    This endpoint fetches real-time balance from MEXC API.
+    Requires valid MEXC_API_KEY and MEXC_SECRET_KEY with spot trading permissions.
+    
+    Returns:
+        dict: Account balances for QRL and USDT with free/locked amounts
+        
+    Raises:
+        HTTPException: 401 if API keys not configured, 500 if API call fails
+    """
+    # Validate API keys are configured
     if not config.MEXC_API_KEY or not config.MEXC_SECRET_KEY:
+        logger.error("API keys not configured - cannot fetch account balance")
         raise HTTPException(
             status_code=401,
-            detail="API keys not configured. Set MEXC_API_KEY and MEXC_SECRET_KEY environment variables."
+            detail={
+                "error": "API keys not configured",
+                "message": "Set MEXC_API_KEY and MEXC_SECRET_KEY environment variables",
+                "help": "Check Cloud Run environment variables or .env file"
+            }
         )
     
     try:
+        logger.info("Fetching account balance from MEXC API")
         account_info = await mexc_client.get_account_info()
         
         # Extract QRL and USDT balances
         balances = {}
+        all_assets = []
+        
         for balance in account_info.get("balances", []):
             asset = balance.get("asset")
+            all_assets.append(asset)
+            
             if asset in ["QRL", "USDT"]:
                 balances[asset] = {
-                    "free": balance.get("free"),
-                    "locked": balance.get("locked")
+                    "free": balance.get("free", "0"),
+                    "locked": balance.get("locked", "0")
                 }
         
+        # Log available assets for debugging
+        logger.info(f"Account has {len(all_assets)} assets, QRL/USDT found: {list(balances.keys())}")
+        
+        # Ensure QRL and USDT are always in response (even if zero)
+        if "QRL" not in balances:
+            balances["QRL"] = {"free": "0", "locked": "0"}
+        if "USDT" not in balances:
+            balances["USDT"] = {"free": "0", "locked": "0"}
+        
         return {
+            "success": True,
             "balances": balances,
             "timestamp": datetime.now().isoformat()
         }
+        
     except Exception as e:
-        logger.error(f"Failed to get account balance: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to get account balance: {str(e)}")
+        logger.error(f"Failed to get account balance: {e}", exc_info=True)
+        
+        # Check if it's an authentication error
+        error_msg = str(e).lower()
+        if "401" in error_msg or "unauthorized" in error_msg or "invalid" in error_msg:
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "error": "Authentication failed",
+                    "message": "API keys may be invalid or lack spot trading permissions",
+                    "help": "Verify your MEXC API keys and ensure they have SPOT trading enabled",
+                    "technical_details": str(e)
+                }
+            )
+        
+        # Generic error response
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Failed to fetch account balance",
+                "message": str(e),
+                "help": "Check MEXC API status and your API key permissions"
+            }
+        )
 
 
 @app.get("/account/sub-accounts")
 async def get_sub_accounts():
-    """Get sub-accounts list (requires API keys)"""
+    """
+    Get sub-accounts list (requires API keys with broker permissions)
+    
+    This endpoint fetches sub-account list from MEXC broker API.
+    Note: Regular spot trading accounts may not have access to this endpoint.
+    Broker account permissions are required.
+    
+    Returns:
+        dict: List of sub-accounts with their details
+        
+    Raises:
+        HTTPException: 401 if API keys not configured, 403 if insufficient permissions
+    """
+    # Validate API keys are configured
     if not config.MEXC_API_KEY or not config.MEXC_SECRET_KEY:
+        logger.error("API keys not configured - cannot fetch sub-accounts")
         raise HTTPException(
             status_code=401,
-            detail="API keys not configured. Set MEXC_API_KEY and MEXC_SECRET_KEY environment variables."
+            detail={
+                "error": "API keys not configured",
+                "message": "Set MEXC_API_KEY and MEXC_SECRET_KEY environment variables",
+                "help": "Check Cloud Run environment variables or .env file"
+            }
         )
     
     try:
+        logger.info("Fetching sub-accounts from MEXC broker API")
         # Get sub-accounts from MEXC API
         sub_accounts = await mexc_client.get_sub_accounts()
         
+        logger.info(f"Successfully retrieved {len(sub_accounts)} sub-accounts")
+        
         return {
+            "success": True,
             "sub_accounts": sub_accounts,
             "count": len(sub_accounts) if sub_accounts else 0,
             "timestamp": datetime.now().isoformat()
         }
+        
     except Exception as e:
-        logger.error(f"Failed to get sub-accounts: {e}")
-        # Return empty list if not supported or error
+        logger.warning(f"Failed to get sub-accounts: {e}")
+        
+        # Check if it's a permission error
+        error_msg = str(e).lower()
+        if "403" in error_msg or "permission" in error_msg or "forbidden" in error_msg:
+            return {
+                "success": False,
+                "sub_accounts": [],
+                "count": 0,
+                "message": "Sub-account access requires broker permissions",
+                "help": "This feature is only available for MEXC broker accounts",
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        # Return empty list for other errors (maintain API compatibility)
         return {
+            "success": False,
             "sub_accounts": [],
             "count": 0,
+            "message": str(e),
             "timestamp": datetime.now().isoformat()
         }
+
+
+@app.get("/account/sub-account/balance")
+async def get_sub_account_balance(
+    email: Optional[str] = None,
+    sub_account_id: Optional[str] = None
+):
+    """
+    Get specific sub-account balance (requires API keys with broker permissions)
+    
+    Query parameters:
+        email: Sub-account email address (optional)
+        sub_account_id: Sub-account ID (optional)
+        
+    Note: At least one of email or sub_account_id must be provided.
+    Different sub-accounts may use email or ID as identifier.
+    
+    Returns:
+        dict: Sub-account balance details
+        
+    Raises:
+        HTTPException: 400 if no identifier provided, 401 if API keys missing
+    """
+    # Validate API keys are configured
+    if not config.MEXC_API_KEY or not config.MEXC_SECRET_KEY:
+        logger.error("API keys not configured - cannot fetch sub-account balance")
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "error": "API keys not configured",
+                "message": "Set MEXC_API_KEY and MEXC_SECRET_KEY environment variables",
+                "help": "Check Cloud Run environment variables or .env file"
+            }
+        )
+    
+    # Validate at least one identifier is provided
+    if not email and not sub_account_id:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Missing identifier",
+                "message": "Either email or sub_account_id must be provided",
+                "help": "Add ?email=xxx@example.com or ?sub_account_id=123456 to the request"
+            }
+        )
+    
+    try:
+        identifier = email or sub_account_id
+        logger.info(f"Fetching balance for sub-account: {identifier}")
+        
+        # Get sub-account balance from MEXC API
+        balance_data = await mexc_client.get_sub_account_balance(
+            email=email,
+            sub_account_id=sub_account_id
+        )
+        
+        logger.info(f"Successfully retrieved balance for sub-account: {identifier}")
+        
+        return {
+            "success": True,
+            "sub_account": {
+                "email": email,
+                "id": sub_account_id
+            },
+            "balance": balance_data,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except ValueError as e:
+        # Validation error
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation error",
+                "message": str(e)
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to get sub-account balance: {e}")
+        
+        # Check if it's a permission error
+        error_msg = str(e).lower()
+        if "403" in error_msg or "permission" in error_msg or "forbidden" in error_msg:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "Insufficient permissions",
+                    "message": "Sub-account access requires broker permissions",
+                    "help": "This feature is only available for MEXC broker accounts"
+                }
+            )
+        
+        # Generic error
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Failed to fetch sub-account balance",
+                "message": str(e)
+            }
+        )
 
 
 @app.exception_handler(Exception)

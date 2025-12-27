@@ -329,38 +329,98 @@
         
         async function fetchData(endpoint) {
             try {
+                console.log(`[FETCH] Calling ${endpoint}...`);
                 const response = await fetch(endpoint);
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return await response.json();
+                
+                // Log response status
+                console.log(`[FETCH] ${endpoint} - Status: ${response.status} ${response.statusText}`);
+                
+                if (!response.ok) {
+                    // Try to parse error details from response
+                    const errorData = await response.json().catch(() => null);
+                    console.error(`[FETCH] ${endpoint} - Error:`, errorData);
+                    
+                    // Show user-friendly error message
+                    if (response.status === 401) {
+                        console.error('❌ API Keys not configured or invalid');
+                        console.error('Help: Check MEXC_API_KEY and MEXC_SECRET_KEY in Cloud Run environment variables');
+                    } else if (response.status === 403) {
+                        console.error('❌ Insufficient permissions');
+                        console.error('Help: Ensure API keys have required permissions');
+                    } else if (response.status >= 500) {
+                        console.error('❌ Server error - MEXC API or backend issue');
+                    }
+                    
+                    throw new Error(`HTTP ${response.status}: ${errorData?.detail?.message || response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log(`[FETCH] ${endpoint} - Success:`, data);
+                return data;
+                
             } catch (error) {
-                console.error('Fetch error:', error);
+                console.error(`[FETCH] ${endpoint} - Exception:`, error);
                 return null;
             }
         }
         
         async function loadAccountBalance() {
+            console.log('=== LOADING ACCOUNT BALANCE ===');
             const data = await fetchData('/account/balance');
-            console.log('Account balance response:', data);
-            if (data && data.balances) {
-                // QRL Balance
-                const qrl = data.balances.QRL || { free: '0', locked: '0' };
-                const qrlTotal = parseFloat(qrl.free) + parseFloat(qrl.locked);
-                document.getElementById('qrl-balance').textContent = qrlTotal.toFixed(4);
-                document.getElementById('qrl-free').textContent = parseFloat(qrl.free).toFixed(4);
-                document.getElementById('qrl-locked').textContent = parseFloat(qrl.locked).toFixed(4);
-                
-                // USDT Balance
-                const usdt = data.balances.USDT || { free: '0', locked: '0' };
-                const usdtTotal = parseFloat(usdt.free) + parseFloat(usdt.locked);
-                document.getElementById('usdt-balance').textContent = usdtTotal.toFixed(2);
-                document.getElementById('usdt-free').textContent = parseFloat(usdt.free).toFixed(2);
-                document.getElementById('usdt-locked').textContent = parseFloat(usdt.locked).toFixed(2);
-                
-                console.log('Balances loaded:', { qrlTotal, usdtTotal });
-                return { qrlTotal, usdtTotal };
+            
+            // Check if request failed
+            if (!data) {
+                console.error('❌ Failed to fetch account balance - no response');
+                document.getElementById('qrl-balance').textContent = 'ERROR';
+                document.getElementById('qrl-balance').style.color = '#fc5c65';
+                document.getElementById('usdt-balance').textContent = 'ERROR';
+                document.getElementById('usdt-balance').style.color = '#fc5c65';
+                return null;
             }
-            console.error('Failed to load account balance - no data or no balances property');
-            return null;
+            
+            console.log('📊 Account balance response:', data);
+            
+            // Check if balances property exists
+            if (!data.balances) {
+                console.error('❌ No balances property in response');
+                console.error('Response data:', data);
+                document.getElementById('qrl-balance').textContent = 'N/A';
+                document.getElementById('usdt-balance').textContent = 'N/A';
+                return null;
+            }
+            
+            console.log('💰 Available assets:', Object.keys(data.balances));
+            
+            // QRL Balance
+            const qrl = data.balances.QRL || { free: '0', locked: '0' };
+            const qrlFree = parseFloat(qrl.free || '0');
+            const qrlLocked = parseFloat(qrl.locked || '0');
+            const qrlTotal = qrlFree + qrlLocked;
+            
+            console.log('QRL:', { free: qrlFree, locked: qrlLocked, total: qrlTotal });
+            
+            document.getElementById('qrl-balance').textContent = qrlTotal.toFixed(4);
+            document.getElementById('qrl-balance').style.color = ''; // Reset color
+            document.getElementById('qrl-free').textContent = qrlFree.toFixed(4);
+            document.getElementById('qrl-locked').textContent = qrlLocked.toFixed(4);
+            
+            // USDT Balance
+            const usdt = data.balances.USDT || { free: '0', locked: '0' };
+            const usdtFree = parseFloat(usdt.free || '0');
+            const usdtLocked = parseFloat(usdt.locked || '0');
+            const usdtTotal = usdtFree + usdtLocked;
+            
+            console.log('USDT:', { free: usdtFree, locked: usdtLocked, total: usdtTotal });
+            
+            document.getElementById('usdt-balance').textContent = usdtTotal.toFixed(2);
+            document.getElementById('usdt-balance').style.color = ''; // Reset color
+            document.getElementById('usdt-free').textContent = usdtFree.toFixed(2);
+            document.getElementById('usdt-locked').textContent = usdtLocked.toFixed(2);
+            
+            console.log('✅ Balances loaded successfully');
+            console.log('=== END ACCOUNT BALANCE ===');
+            
+            return { qrlTotal, usdtTotal };
         }
         
         async function loadPrice() {
@@ -453,16 +513,38 @@
         }
         
         async function loadSubAccounts() {
+            console.log('=== LOADING SUB-ACCOUNTS ===');
             const data = await fetchData('/account/sub-accounts');
-            if (data && data.sub_accounts && data.sub_accounts.length > 0) {
+            
+            if (!data) {
+                console.log('⚠️ No response from sub-accounts endpoint');
+                console.log('This is normal if API keys are not configured or lack broker permissions');
+                return;
+            }
+            
+            console.log('📋 Sub-accounts response:', data);
+            
+            if (data.sub_accounts && data.sub_accounts.length > 0) {
+                console.log(`✅ Found ${data.sub_accounts.length} sub-accounts`);
                 const select = document.getElementById('account-select');
+                
                 data.sub_accounts.forEach(account => {
                     const option = document.createElement('option');
                     option.value = account.id || account.email;
                     option.textContent = `子帳戶: ${account.email || account.id}`;
                     select.appendChild(option);
                 });
+            } else {
+                console.log('ℹ️ No sub-accounts found or not available');
+                if (data.message) {
+                    console.log('Message:', data.message);
+                }
+                if (data.help) {
+                    console.log('Help:', data.help);
+                }
             }
+            
+            console.log('=== END SUB-ACCOUNTS ===');
         }
         
         function calculateTotalValue(qrlBalance, usdtBalance, qrlPrice) {
