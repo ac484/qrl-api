@@ -258,5 +258,37 @@ class MEXCClient:
             return None
 
 
+
+    def calculate_moving_average(self, period: int = 20, interval: str = '1h') -> Optional[float]:
+        """
+        Calculate moving average from kline data
+        
+        Args:
+            period: Number of periods for MA calculation
+            interval: Kline interval
+            
+        Returns:
+            float: Moving average or None if error
+        """
+        try:
+            klines = self.get_klines(interval=interval, limit=period)
+            
+            if not klines or len(klines) < period:
+                logger.warning(f"Insufficient kline data for MA calculation: {len(klines) if klines else 0}/{period}")
+                return None
+            
+            # Calculate average of close prices
+            close_prices = [float(kline[4]) for kline in klines]  # Index 4 is close price
+            ma = sum(close_prices) / len(close_prices)
+            
+            logger.info(f"Calculated {period}-period MA: {ma}")
+            return ma
+            
+        except Exception as e:
+            logger.error(f"Error calculating moving average: {e}")
+            return None
+
+
+
 # Create singleton instance
 mexc_client = MEXCClient()
