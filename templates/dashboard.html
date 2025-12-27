@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QRL 囤幣機器人 - 控制面板</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #2d3748;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        
+        .header .subtitle {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-left: 12px;
+        }
+        
+        .status-running {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .status-paused {
+            background: #ed8936;
+            color: white;
+        }
+        
+        .status-stopped {
+            background: #f56565;
+            color: white;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card-title {
+            color: #2d3748;
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .card-title::before {
+            content: "";
+            width: 4px;
+            height: 16px;
+            background: #667eea;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+        
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .balance-item:last-child {
+            border-bottom: none;
+        }
+        
+        .balance-label {
+            color: #718096;
+            font-size: 14px;
+        }
+        
+        .balance-value {
+            color: #2d3748;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .balance-value.positive {
+            color: #48bb78;
+        }
+        
+        .balance-value.negative {
+            color: #f56565;
+        }
+        
+        .layer-bar {
+            margin: 12px 0;
+        }
+        
+        .layer-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        
+        .layer-label-name {
+            color: #4a5568;
+            font-weight: 500;
+        }
+        
+        .layer-label-value {
+            color: #718096;
+        }
+        
+        .layer-progress {
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .layer-progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .layer-core {
+            background: linear-gradient(90deg, #4299e1, #3182ce);
+        }
+        
+        .layer-swing {
+            background: linear-gradient(90deg, #48bb78, #38a169);
+        }
+        
+        .layer-active {
+            background: linear-gradient(90deg, #ed8936, #dd6b20);
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 16px;
+            background: #f7fafc;
+            border-radius: 8px;
+        }
+        
+        .stat-label {
+            color: #718096;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+        
+        .stat-value {
+            color: #2d3748;
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .refresh-info {
+            text-align: center;
+            color: #a0aec0;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        
+        .auto-refresh {
+            display: inline-block;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .controls {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        
+        .btn-primary {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+        
+        .btn-info {
+            background: #4299e1;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>
+                🪙 QRL 囤幣機器人
+                <span class="status-badge status-{{ bot_status|lower if bot_status else 'unknown' }}">
+                    {{ bot_status or '未知' }}
+                </span>
+            </h1>
+            <div class="subtitle">QRL/USDT 自動累積策略 · 動態分層倉位管理</div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid">
+            <!-- Balance Card -->
+            <div class="card">
+                <div class="card-title">💰 帳戶餘額</div>
+                <div class="balance-item">
+                    <span class="balance-label">QRL 持倉</span>
+                    <span class="balance-value">{{ "%.2f"|format(balance.qrl) }}</span>
+                </div>
+                <div class="balance-item">
+                    <span class="balance-label">USDT 餘額</span>
+                    <span class="balance-value">{{ "%.2f"|format(balance.usdt) }}</span>
+                </div>
+                <div class="balance-item">
+                    <span class="balance-label">總價值 (USDT)</span>
+                    <span class="balance-value">{{ "%.2f"|format(balance.total_value) }}</span>
+                </div>
+            </div>
+
+            <!-- Price Card -->
+            <div class="card">
+                <div class="card-title">📊 價格信息</div>
+                <div class="balance-item">
+                    <span class="balance-label">當前價格</span>
+                    <span class="balance-value">{{ "%.6f"|format(price.current) if price.current else 'N/A' }}</span>
+                </div>
+                <div class="balance-item">
+                    <span class="balance-label">平均成本</span>
+                    <span class="balance-value">{{ "%.6f"|format(price.avg_cost) if price.avg_cost else 'N/A' }}</span>
+                </div>
+                <div class="balance-item">
+                    <span class="balance-label">盈虧</span>
+                    <span class="balance-value {% if price.pnl_percent %}{{ 'positive' if price.pnl_percent > 0 else 'negative' }}{% endif %}">
+                        {% if price.pnl_percent %}{{ "%+.2f"|format(price.pnl_percent) }}%{% else %}N/A{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Position Layers Card -->
+            <div class="card">
+                <div class="card-title">🎯 倉位分層</div>
+                <div class="layer-bar">
+                    <div class="layer-label">
+                        <span class="layer-label-name">核心倉位 (永不出售)</span>
+                        <span class="layer-label-value">{{ "%.2f"|format(layers.core_qrl) }} QRL</span>
+                    </div>
+                    <div class="layer-progress">
+                        <div class="layer-progress-fill layer-core" style="width: {{ layers.core_percent }}%"></div>
+                    </div>
+                </div>
+                <div class="layer-bar">
+                    <div class="layer-label">
+                        <span class="layer-label-name">波段倉位</span>
+                        <span class="layer-label-value">{{ "%.2f"|format(layers.swing_qrl) }} QRL</span>
+                    </div>
+                    <div class="layer-progress">
+                        <div class="layer-progress-fill layer-swing" style="width: {{ layers.swing_percent }}%"></div>
+                    </div>
+                </div>
+                <div class="layer-bar">
+                    <div class="layer-label">
+                        <span class="layer-label-name">機動倉位</span>
+                        <span class="layer-label-value">{{ "%.2f"|format(layers.active_qrl) }} QRL</span>
+                    </div>
+                    <div class="layer-progress">
+                        <div class="layer-progress-fill layer-active" style="width: {{ layers.active_percent }}%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trading Stats Card -->
+            <div class="card">
+                <div class="card-title">📈 交易統計</div>
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">今日交易</div>
+                        <div class="stat-value">{{ daily_trades }}/{{ max_daily_trades }}</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">已實現盈虧</div>
+                        <div class="stat-value {% if realized_pnl %}{{ 'positive' if realized_pnl > 0 else 'negative' }}{% endif %}">
+                            {% if realized_pnl %}{{ "%+.2f"|format(realized_pnl) }}{% else %}0.00{% endif %}
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">未實現盈虧</div>
+                        <div class="stat-value {% if unrealized_pnl %}{{ 'positive' if unrealized_pnl > 0 else 'negative' }}{% endif %}">
+                            {% if unrealized_pnl %}{{ "%+.2f"|format(unrealized_pnl) }}{% else %}0.00{% endif %}
+                        </div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">USDT 儲備率</div>
+                        <div class="stat-value">{{ "%.1f"|format(usdt_reserve_percent) }}%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="card-title">⚙️ 機器人控制</div>
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="controlBot('start')">▶️ 啟動</button>
+                <button class="btn btn-warning" onclick="controlBot('pause')">⏸️ 暫停</button>
+                <button class="btn btn-danger" onclick="controlBot('stop')">⏹️ 停止</button>
+                <button class="btn btn-info" onclick="location.reload()">🔄 刷新</button>
+            </div>
+        </div>
+
+        <!-- Refresh Info -->
+        <div class="refresh-info">
+            <span class="auto-refresh">●</span> 頁面每 30 秒自動刷新 · 最後更新: {{ update_time }}
+        </div>
+    </div>
+
+    <script>
+        // Auto refresh every 30 seconds
+        setTimeout(function() {
+            location.reload();
+        }, 30000);
+
+        // Control bot function
+        function controlBot(action) {
+            fetch('/control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ action: action })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message || '操作成功');
+                location.reload();
+            })
+            .catch(error => {
+                alert('操作失敗: ' + error);
+            });
+        }
+    </script>
+</body>
+</html>
