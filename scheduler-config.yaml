@@ -1,0 +1,87 @@
+# Cloud Scheduler Configuration for QRL Trading Bot
+# 此配置文件定義了 3 個 Cloud Scheduler jobs
+# 用於 Google Cloud Run 的自動化任務調度
+
+# Job 1: 餘額同步 - 每分鐘執行一次
+---
+apiVersion: cloudscheduler.cnrm.cloud.google.com/v1beta1
+kind: CloudSchedulerJob
+metadata:
+  name: qrl-sync-balance-job
+  annotations:
+    cnrm.cloud.google.com/project-id: "YOUR_PROJECT_ID"  # 替換為您的專案 ID
+spec:
+  location: asia-southeast1
+  description: "Sync MEXC account balance to Redis every minute"
+  schedule: "* * * * *"  # 每分鐘執行
+  timeZone: "Asia/Taipei"
+  attemptDeadline: "320s"
+  retryConfig:
+    retryCount: 3
+    maxRetryDuration: "0s"
+    minBackoffDuration: "5s"
+    maxBackoffDuration: "3600s"
+    maxDoublings: 5
+  httpTarget:
+    uri: "https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/sync-balance"
+    httpMethod: "POST"
+    headers:
+      X-CloudScheduler: "true"
+      Content-Type: "application/json"
+    body: "{}"
+
+---
+# Job 2: 價格更新 - 每分鐘執行一次
+apiVersion: cloudscheduler.cnrm.cloud.google.com/v1beta1
+kind: CloudSchedulerJob
+metadata:
+  name: qrl-update-price-job
+  annotations:
+    cnrm.cloud.google.com/project-id: "YOUR_PROJECT_ID"  # 替換為您的專案 ID
+spec:
+  location: asia-southeast1
+  description: "Update QRL/USDT price from MEXC every minute"
+  schedule: "* * * * *"  # 每分鐘執行
+  timeZone: "Asia/Taipei"
+  attemptDeadline: "320s"
+  retryConfig:
+    retryCount: 3
+    maxRetryDuration: "0s"
+    minBackoffDuration: "5s"
+    maxBackoffDuration: "3600s"
+    maxDoublings: 5
+  httpTarget:
+    uri: "https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/update-price"
+    httpMethod: "POST"
+    headers:
+      X-CloudScheduler: "true"
+      Content-Type: "application/json"
+    body: "{}"
+
+---
+# Job 3: 成本更新 - 每 5 分鐘執行一次
+apiVersion: cloudscheduler.cnrm.cloud.google.com/v1beta1
+kind: CloudSchedulerJob
+metadata:
+  name: qrl-update-cost-job
+  annotations:
+    cnrm.cloud.google.com/project-id: "YOUR_PROJECT_ID"  # 替換為您的專案 ID
+spec:
+  location: asia-southeast1
+  description: "Update cost and PnL calculations every 5 minutes"
+  schedule: "*/5 * * * *"  # 每 5 分鐘執行
+  timeZone: "Asia/Taipei"
+  attemptDeadline: "320s"
+  retryConfig:
+    retryCount: 3
+    maxRetryDuration: "0s"
+    minBackoffDuration: "5s"
+    maxBackoffDuration: "3600s"
+    maxDoublings: 5
+  httpTarget:
+    uri: "https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/update-cost"
+    httpMethod: "POST"
+    headers:
+      X-CloudScheduler: "true"
+      Content-Type: "application/json"
+    body: "{}"

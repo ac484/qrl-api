@@ -1,0 +1,141 @@
+# Cloud Build Configuration for Cloud Scheduler Jobs Deployment
+# 此文件用於自動化部署 Cloud Scheduler jobs
+# 使用 Cloud Build 進行 CI/CD 自動化
+
+steps:
+  # Step 1: 啟用必要的 API
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'enable-apis'
+    args:
+      - 'services'
+      - 'enable'
+      - 'cloudscheduler.googleapis.com'
+      - 'appengine.googleapis.com'
+
+  # Step 2: 檢查 App Engine 應用是否存在（Cloud Scheduler 需要）
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'check-appengine'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if ! gcloud app describe &>/dev/null; then
+          echo "Creating App Engine app..."
+          gcloud app create --region=asia-southeast1
+        else
+          echo "App Engine app already exists"
+        fi
+
+  # Step 3: 刪除現有的 scheduler jobs（如果存在）
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'delete-existing-jobs'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Deleting existing scheduler jobs..."
+        gcloud scheduler jobs delete qrl-sync-balance-job --location=asia-southeast1 --quiet || true
+        gcloud scheduler jobs delete qrl-update-price-job --location=asia-southeast1 --quiet || true
+        gcloud scheduler jobs delete qrl-update-cost-job --location=asia-southeast1 --quiet || true
+        echo "Cleanup completed"
+
+  # Step 4: 創建 Job 1 - 餘額同步（每分鐘）
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'create-sync-balance-job'
+    args:
+      - 'scheduler'
+      - 'jobs'
+      - 'create'
+      - 'http'
+      - 'qrl-sync-balance-job'
+      - '--location=asia-southeast1'
+      - '--schedule=* * * * *'
+      - '--uri=https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/sync-balance'
+      - '--http-method=POST'
+      - '--headers=X-CloudScheduler=true,Content-Type=application/json'
+      - '--message-body={}'
+      - '--time-zone=Asia/Taipei'
+      - '--description=Sync MEXC account balance to Redis every minute'
+      - '--attempt-deadline=320s'
+      - '--max-retry-attempts=3'
+
+  # Step 5: 創建 Job 2 - 價格更新（每分鐘）
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'create-update-price-job'
+    args:
+      - 'scheduler'
+      - 'jobs'
+      - 'create'
+      - 'http'
+      - 'qrl-update-price-job'
+      - '--location=asia-southeast1'
+      - '--schedule=* * * * *'
+      - '--uri=https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/update-price'
+      - '--http-method=POST'
+      - '--headers=X-CloudScheduler=true,Content-Type=application/json'
+      - '--message-body={}'
+      - '--time-zone=Asia/Taipei'
+      - '--description=Update QRL/USDT price from MEXC every minute'
+      - '--attempt-deadline=320s'
+      - '--max-retry-attempts=3'
+
+  # Step 6: 創建 Job 3 - 成本更新（每 5 分鐘）
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'create-update-cost-job'
+    args:
+      - 'scheduler'
+      - 'jobs'
+      - 'create'
+      - 'http'
+      - 'qrl-update-cost-job'
+      - '--location=asia-southeast1'
+      - '--schedule=*/5 * * * *'
+      - '--uri=https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/update-cost'
+      - '--http-method=POST'
+      - '--headers=X-CloudScheduler=true,Content-Type=application/json'
+      - '--message-body={}'
+      - '--time-zone=Asia/Taipei'
+      - '--description=Update cost and PnL calculations every 5 minutes'
+      - '--attempt-deadline=320s'
+      - '--max-retry-attempts=3'
+
+  # Step 7: 列出所有創建的 jobs 進行驗證
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'list-jobs'
+    args:
+      - 'scheduler'
+      - 'jobs'
+      - 'list'
+      - '--location=asia-southeast1'
+
+  # Step 8: 手動觸發每個 job 進行測試
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'test-jobs'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Testing scheduler jobs..."
+        echo "Triggering sync-balance-job..."
+        gcloud scheduler jobs run qrl-sync-balance-job --location=asia-southeast1 || true
+        sleep 5
+        echo "Triggering update-price-job..."
+        gcloud scheduler jobs run qrl-update-price-job --location=asia-southeast1 || true
+        sleep 5
+        echo "Triggering update-cost-job..."
+        gcloud scheduler jobs run qrl-update-cost-job --location=asia-southeast1 || true
+        echo "All jobs triggered successfully"
+
+# 設置超時時間（15 分鐘）
+timeout: '900s'
+
+# 日誌選項
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: 'N1_HIGHCPU_8'
+
+# 替代變數（可在觸發時覆蓋）
+substitutions:
+  _CLOUD_RUN_URL: 'https://qrl-trading-api-545492969490.asia-southeast1.run.app'
+  _REGION: 'asia-southeast1'
+  _TIMEZONE: 'Asia/Taipei'
