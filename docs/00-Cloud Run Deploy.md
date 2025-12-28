@@ -1,4 +1,7 @@
 gcloud builds submit --config=cloudbuild.yaml .
+
+gcloud builds submit --tag gcr.io/qrl-api/qrl-trading-api . && gcloud run deploy qrl-trading-api --image gcr.io/qrl-api/qrl-trading-api --platform managed --region asia-east1 --allow-unauthenticated
+
 # ==============================
 # QRL Trading API - One-Click Deployment (PowerShell)
 # ==============================
