@@ -42,7 +42,7 @@ async def control_bot(request: ControlRequest):
     Returns:
         Status of the control operation
     """
-    from redis_client import redis_client
+    from infrastructure.external.redis_client from infrastructure.external import redis_client
     
     try:
         action = request.action.upper()
@@ -91,8 +91,8 @@ async def execute_trading(request: ExecuteRequest, background_tasks: BackgroundT
     Returns:
         Execution result
     """
-    from bot import TradingBot
-    from config import config
+    from infrastructure.bot import TradingBot
+    from infrastructure.config.config from infrastructure.config import config
     
     try:
         action = request.action.upper()

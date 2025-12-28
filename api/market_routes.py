@@ -18,8 +18,8 @@ async def get_ticker(symbol: str):
     Returns:
         Ticker data with price, volume, and 24h statistics
     """
-    from mexc_client import mexc_client
-    from redis_client import redis_client
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.external.redis_client from infrastructure.external import redis_client
     from datetime import datetime
     import logging
     
@@ -71,8 +71,8 @@ async def get_price(symbol: str):
     Returns:
         Current price data
     """
-    from mexc_client import mexc_client
-    from redis_client import redis_client
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.external.redis_client from infrastructure.external import redis_client
     from datetime import datetime
     import logging
     
@@ -127,8 +127,8 @@ async def get_orderbook(symbol: str, limit: int = 100):
     Returns:
         Order book with bids and asks
     """
-    from mexc_client import mexc_client
-    from redis_client import redis_client
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.external.redis_client from infrastructure.external import redis_client
     from datetime import datetime
     import logging
     
@@ -181,8 +181,8 @@ async def get_recent_trades(symbol: str, limit: int = 500):
     Returns:
         List of recent trades
     """
-    from mexc_client import mexc_client
-    from redis_client import redis_client
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.external.redis_client from infrastructure.external import redis_client
     from datetime import datetime
     import logging
     
@@ -241,8 +241,8 @@ async def get_klines(
     Returns:
         List of candlestick data
     """
-    from mexc_client import mexc_client
-    from redis_client import redis_client
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.external.redis_client from infrastructure.external import redis_client
     from datetime import datetime
     import logging
     

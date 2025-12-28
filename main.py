@@ -13,9 +13,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import config
-from mexc_client import mexc_client
-from redis_client import redis_client
+from infrastructure.config.config import config
+from infrastructure.external.mexc_client import mexc_client
+from infrastructure.external.redis_client import redis_client
 
 # Configure logging
 logging.basicConfig(
@@ -100,7 +100,7 @@ from api.market_routes import router as market_router
 from api.account_routes import router as account_router
 from api.bot_routes import router as bot_router
 from api.sub_account_routes import router as sub_account_router
-from cloud_tasks import router as cloud_tasks_router
+from infrastructure.cloud_tasks import router as cloud_tasks_router
 
 # Register all routers
 app.include_router(status_router)          # /, /dashboard, /health, /status

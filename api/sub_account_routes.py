@@ -18,8 +18,8 @@ async def get_sub_accounts():
     Returns:
         List of sub-accounts with details
     """
-    from mexc_client import mexc_client
-    from config import config
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.config.config from infrastructure.config import config
     
     try:
         # Check if API keys are configured
@@ -88,8 +88,8 @@ async def get_sub_account_balance(
     Returns:
         Sub-account balance information
     """
-    from mexc_client import mexc_client
-    from config import config
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.config.config from infrastructure.config import config
     
     # Determine identifier (support multiple parameter names)
     sub_account_identifier = identifier or email or sub_account_id
@@ -190,8 +190,8 @@ async def transfer_between_sub_accounts(
     Returns:
         dict: Transfer result with transaction ID
     """
-    from mexc_client import mexc_client
-    from config import config
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.config.config from infrastructure.config import config
     
     # Validate API keys
     if not config.MEXC_API_KEY or not config.MEXC_SECRET_KEY:
@@ -260,8 +260,8 @@ async def create_sub_account_api_key(
     Returns:
         dict: API key details including secretKey (STORE SECURELY!)
     """
-    from mexc_client import mexc_client
-    from config import config
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.config.config from infrastructure.config import config
     
     # Validate API keys
     if not config.MEXC_API_KEY or not config.MEXC_SECRET_KEY:
@@ -329,8 +329,8 @@ async def delete_sub_account_api_key(
     Returns:
         dict: Deletion confirmation
     """
-    from mexc_client import mexc_client
-    from config import config
+    from infrastructure.external.mexc_client from infrastructure.external import mexc_client
+    from infrastructure.config.config from infrastructure.config import config
     
     # Validate API keys
     if not config.MEXC_API_KEY or not config.MEXC_SECRET_KEY:
