@@ -42,6 +42,7 @@
 ---
 
 ## 🗄️ 備註與原始資料
-- 未重新命名的舊檔（如 1-qrl-accumulation-strategy.md、CONSOLIDATED_* 等）保留作為完整來源，可視為「附錄/原文檔」。新編號檔已提煉核心內容並指向關鍵步驟。
+- 深度內容仍可查閱：1-qrl-accumulation-strategy.md、2-bot.md、3-cost.md、4-scheduler.md、5-SCHEDULED_TASKS_DESIGN.md、6-ARCHITECTURE_CHANGES.md、DATA_SOURCE_STRATEGY.md、MEXC_API_COMPLIANCE.md、MONITORING_GUIDE.md、POSITION_LAYERS.md、SUB_ACCOUNT_GUIDE.md、TROUBLESHOOTING.md、mexc-dev-url.md。
+- 冗餘的舊版彙總文件（CONSOLIDATED_*, QUICK_START.md）已移除，避免重複。
 - 檔名遵循 `NN-Title.md`，標題使用 H2（避免 H1），語氣統一、內容聚焦。
-- 若需深度細節或歷史決策，可查閱原始檔案；日常使用以 00–08 為主。
+- 日常查閱以 00–08 為主，深度或歷史決策再查原始細節檔。
