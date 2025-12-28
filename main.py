@@ -6,12 +6,10 @@ import logging
 import sys
 from datetime import datetime
 from typing import Dict, Any, Optional
-from pathlib import Path
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.responses import JSONResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -524,9 +522,7 @@ async def get_account_balance():
         )
     
     try:
-        logger.info("=" * 80)
-        logger.info("FETCHING ACCOUNT BALANCE FROM MEXC API")
-        logger.info("=" * 80)
+        logger.info("Fetching account balance from MEXC API")
         
         # Step 1: Fetch account info from MEXC
         logger.info("Step 1: Fetching account info from MEXC API...")
@@ -616,14 +612,8 @@ async def get_account_balance():
         await redis_client.set_mexc_account_balance(balance_data)
         logger.info("✓ Balance data stored in Redis: mexc:account_balance")
         
-        logger.info("=" * 80)
-        logger.info("ALL MEXC DATA SUCCESSFULLY STORED IN REDIS (PERMANENT)")
-        logger.info("Redis Keys Created:")
-        logger.info("  - mexc:raw_response:account_info")
-        logger.info("  - mexc:account_balance")
-        logger.info("  - mexc:qrl_price")
-        logger.info("  - mexc:total_value")
-        logger.info("=" * 80)
+        logger.info("All MEXC data successfully stored in Redis (permanent storage)")
+        logger.info("Redis keys: mexc:raw_response:account_info, mexc:account_balance, mexc:qrl_price, mexc:total_value")
         
         # Return comprehensive response
         return {
@@ -657,9 +647,7 @@ async def get_account_balance():
         return result
         
     except Exception as e:
-        logger.error("=" * 80)
-        logger.error(f"ERROR FETCHING ACCOUNT BALANCE: {e}", exc_info=True)
-        logger.error("=" * 80)
+        logger.error(f"Error fetching account balance: {e}", exc_info=True)
         
         # Check if it's an authentication error
         error_msg = str(e).lower()
