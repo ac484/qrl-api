@@ -86,6 +86,9 @@ async def task_sync_balance(
                 "can_withdraw": str(account_info.get("canWithdraw", False)),
                 "can_deposit": str(account_info.get("canDeposit", False)),
                 "update_time": str(account_info.get("updateTime", 0)),
+                "permissions": json.dumps(account_info.get("permissions", [])),
+                "maker_commission": str(account_info.get("makerCommission", 0)),
+                "taker_commission": str(account_info.get("takerCommission", 0)),
                 "updated_at": datetime.now().isoformat()
             }
             
@@ -156,6 +159,11 @@ async def task_update_price(
             low_24h = float(ticker.get("lowPrice", 0))
             quote_volume = float(ticker.get("quoteVolume", 0))
             open_price = float(ticker.get("openPrice", 0))
+            weighted_avg_price = float(ticker.get("weightedAvgPrice", 0))
+            prev_close_price = float(ticker.get("prevClosePrice", 0))
+            bid_price = float(ticker.get("bidPrice", 0))
+            ask_price = float(ticker.get("askPrice", 0))
+            spread = ask_price - bid_price if (ask_price > 0 and bid_price > 0) else 0.0
             
             # Update permanent price storage (no TTL)
             await redis_client.set_latest_price(price, volume_24h)
@@ -174,7 +182,8 @@ async def task_update_price(
                 f"Price: {price:.6f}, "
                 f"Change: {price_change_pct:.2f}%, "
                 f"Volume: {volume_24h:.2f}, "
-                f"24h High/Low: {high_24h:.6f}/{low_24h:.6f}"
+                f"24h High/Low: {high_24h:.6f}/{low_24h:.6f}, "
+                f"Bid/Ask: {bid_price:.6f}/{ask_price:.6f} (spread: {spread:.8f})"
             )
             
             return {
@@ -188,7 +197,12 @@ async def task_update_price(
                     "high_24h": high_24h,
                     "low_24h": low_24h,
                     "quote_volume": quote_volume,
-                    "open_price": open_price
+                    "open_price": open_price,
+                    "weighted_avg_price": weighted_avg_price,
+                    "prev_close_price": prev_close_price,
+                    "bid_price": bid_price,
+                    "ask_price": ask_price,
+                    "spread": spread
                 },
                 "timestamp": datetime.now().isoformat()
             }
