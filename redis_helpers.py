@@ -4,7 +4,7 @@ Consolidated common patterns from redis_client.py
 """
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
