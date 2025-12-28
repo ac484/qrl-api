@@ -1,3 +1,7 @@
+gcloud builds submit --config=cloudbuild.yaml .
+
+
+
 # ==============================
 # QRL Trading API - Cloud Run Deployment
 # ==============================
