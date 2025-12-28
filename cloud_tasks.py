@@ -52,10 +52,9 @@ async def task_sync_balance(
             account_info = await mexc_client.get_account_info()
             
             # Store raw MEXC API response permanently
-            await redis_client.set_raw_mexc_response(
+            await redis_client.set_mexc_raw_response(
                 endpoint="account_info",
-                response_data=account_info,
-                metadata={"task": "sync-balance", "source": "cloud_scheduler"}
+                response_data=account_info
             )
             logger.info(f"[Cloud Task] Stored raw account_info response")
             
@@ -166,10 +165,9 @@ async def task_update_price(
             ticker = await mexc_client.get_ticker_24hr("QRLUSDT")
             
             # Store raw MEXC API response permanently
-            await redis_client.set_raw_mexc_response(
+            await redis_client.set_mexc_raw_response(
                 endpoint="ticker_24hr",
-                response_data=ticker,
-                metadata={"symbol": "QRLUSDT", "task": "update-price", "source": "cloud_scheduler"}
+                response_data=ticker
             )
             logger.info(f"[Cloud Task] Stored raw ticker_24hr response")
             
@@ -276,10 +274,9 @@ async def task_update_cost(
                 current_price = float(ticker.get("price", 0))
                 
                 # Store raw ticker response
-                await redis_client.set_raw_mexc_response(
+                await redis_client.set_mexc_raw_response(
                     endpoint="ticker_price",
-                    response_data=ticker,
-                    metadata={"symbol": "QRLUSDT", "task": "update-cost", "source": "cloud_scheduler"}
+                    response_data=ticker
                 )
             
             # Calculate metrics
