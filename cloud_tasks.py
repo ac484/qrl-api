@@ -18,7 +18,8 @@ router = APIRouter(prefix="/tasks", tags=["Cloud Tasks"])
 
 @router.post("/sync-balance")
 async def task_sync_balance(
-    x_cloudscheduler: str = Header(None, alias="X-CloudScheduler")
+    x_cloudscheduler: str = Header(None, alias="X-CloudScheduler"),
+    authorization: str = Header(None)
 ):
     """
     Cloud Scheduler Task: Sync MEXC account balance to Redis
@@ -28,10 +29,18 @@ async def task_sync_balance(
     1. Raw MEXC API response (permanent)
     2. Processed position data (permanent)
     3. All balance fields from API
+    
+    Authentication:
+    - Accepts X-CloudScheduler header (legacy)
+    - Accepts Authorization header with Bearer token (OIDC)
     """
-    # Verify request is from Cloud Scheduler
-    if not x_cloudscheduler:
+    # Verify request is from Cloud Scheduler (support both auth methods)
+    # OIDC sends Authorization: Bearer <token>, legacy sends X-CloudScheduler
+    if not x_cloudscheduler and not authorization:
         raise HTTPException(status_code=401, detail="Unauthorized - Cloud Scheduler only")
+    
+    auth_method = "OIDC" if authorization else "X-CloudScheduler"
+    logger.info(f"[Cloud Task] sync-balance authenticated via {auth_method}")
     
     try:
         if not config.MEXC_API_KEY or not config.MEXC_SECRET_KEY:
@@ -127,7 +136,8 @@ async def task_sync_balance(
 
 @router.post("/update-price")
 async def task_update_price(
-    x_cloudscheduler: str = Header(None, alias="X-CloudScheduler")
+    x_cloudscheduler: str = Header(None, alias="X-CloudScheduler"),
+    authorization: str = Header(None)
 ):
     """
     Cloud Scheduler Task: Update QRL/USDT price
@@ -138,9 +148,17 @@ async def task_update_price(
     2. Latest price data (permanent)
     3. Cached price data (with TTL)
     4. Price history for charts
+    
+    Authentication:
+    - Accepts X-CloudScheduler header (legacy)
+    - Accepts Authorization header with Bearer token (OIDC)
     """
-    if not x_cloudscheduler:
+    # Verify request is from Cloud Scheduler (support both auth methods)
+    if not x_cloudscheduler and not authorization:
         raise HTTPException(status_code=401, detail="Unauthorized - Cloud Scheduler only")
+    
+    auth_method = "OIDC" if authorization else "X-CloudScheduler"
+    logger.info(f"[Cloud Task] update-price authenticated via {auth_method}")
     
     try:
         async with mexc_client:
@@ -219,7 +237,8 @@ async def task_update_price(
 
 @router.post("/update-cost")
 async def task_update_cost(
-    x_cloudscheduler: str = Header(None, alias="X-CloudScheduler")
+    x_cloudscheduler: str = Header(None, alias="X-CloudScheduler"),
+    authorization: str = Header(None)
 ):
     """
     Cloud Scheduler Task: Update cost and PnL data
@@ -230,9 +249,17 @@ async def task_update_cost(
     2. Unrealized P&L
     3. Total invested amount
     4. Realized P&L
+    
+    Authentication:
+    - Accepts X-CloudScheduler header (legacy)
+    - Accepts Authorization header with Bearer token (OIDC)
     """
-    if not x_cloudscheduler:
+    # Verify request is from Cloud Scheduler (support both auth methods)
+    if not x_cloudscheduler and not authorization:
         raise HTTPException(status_code=401, detail="Unauthorized - Cloud Scheduler only")
+    
+    auth_method = "OIDC" if authorization else "X-CloudScheduler"
+    logger.info(f"[Cloud Task] update-cost authenticated via {auth_method}")
     
     try:
         # Get current position and cost data

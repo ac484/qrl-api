@@ -565,21 +565,19 @@ async function loadSubAccounts() {
         
         async function refreshData() {
             // Load all data sources
-            const balances = await loadAccountBalance();  // Real-time API balance (PRIMARY)
+            const balances = await loadAccountBalance();  // Real-time API balance (PRIMARY and ONLY source)
             const price = await loadPrice();               // Current market price
-            const position = await loadStatus();           // Bot analytics only (avg_cost, PnL)
+            const position = await loadStatus();           // Bot analytics only (avg_cost, PnL, position layers)
             
-            // PRIMARY: Use real-time API balance (most accurate and up-to-date)
+            // ONLY USE real-time API balance - it's the most accurate and up-to-date
             // API balance reflects all activities (bot trades + manual deposits/withdrawals)
+            // Redis position data is ONLY for bot analytics (avg_cost, PnL, layers), NOT for balance
             if (balances && price) {
                 calculateTotalValue(balances.qrlTotal, balances.usdtTotal, price);
-            }
-            // FALLBACK: Only use Redis position data if API fails
-            // Redis data may be stale (only updates when bot runs)
-            else if (position && price && (position.qrl_balance || position.usdt_balance)) {
-                const qrlBal = parseFloat(position.qrl_balance || 0);
-                const usdtBal = parseFloat(position.usdt_balance || 0);
-                calculateTotalValue(qrlBal, usdtBal, price);
+            } else {
+                // If API balance fails, show error instead of using stale Redis data
+                console.error('Failed to load real-time balance from API');
+                document.getElementById('total-value').textContent = 'N/A (API Error)';
             }
         }
         
