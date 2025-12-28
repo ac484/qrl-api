@@ -82,6 +82,15 @@ class Config:
     CORE_POSITION_PCT: float = float(os.getenv("CORE_POSITION_PCT", "0.70"))  # 70% core
     USDT_RESERVE_PCT: float = float(os.getenv("USDT_RESERVE_PCT", "0.20"))  # 20% USDT reserve
     
+    # Redis Cache TTL Configuration (in seconds)
+    CACHE_TTL_PRICE: int = int(os.getenv("CACHE_TTL_PRICE", "30"))  # 30 seconds for price
+    CACHE_TTL_TICKER: int = int(os.getenv("CACHE_TTL_TICKER", "60"))  # 1 minute for ticker
+    CACHE_TTL_ORDER_BOOK: int = int(os.getenv("CACHE_TTL_ORDER_BOOK", "10"))  # 10 seconds for order book
+    CACHE_TTL_TRADES: int = int(os.getenv("CACHE_TTL_TRADES", "60"))  # 1 minute for recent trades
+    CACHE_TTL_KLINES: int = int(os.getenv("CACHE_TTL_KLINES", "300"))  # 5 minutes for klines
+    CACHE_TTL_ACCOUNT: int = int(os.getenv("CACHE_TTL_ACCOUNT", "120"))  # 2 minutes for account data
+    CACHE_TTL_ORDERS: int = int(os.getenv("CACHE_TTL_ORDERS", "30"))  # 30 seconds for orders
+    
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     LOG_FORMAT: str = "json"  # json or text

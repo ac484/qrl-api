@@ -13,7 +13,9 @@ MEXC API 整合的 QRL/USDT 自動化交易機器人
 ### 核心特性
 - ✅ MEXC API v3 完整整合
 - ✅ 異步 REST API 調用
-- ✅ Redis 狀態管理
+- ✅ Redis 狀態管理與智能快取
+- ✅ 全面的 MEXC v3 API 數據快取（市場數據、帳戶數據、訂單數據）
+- ✅ 可配置的快取 TTL（減少 API 調用、提升性能）
 - ✅ 6 階段交易執行系統
 - ✅ 移動平均線交叉策略
 - ✅ 多層倉位管理
@@ -81,9 +83,21 @@ uvicorn main:app --host 0.0.0.0 --port 8080
 
 | 端點 | 方法 | 說明 |
 |------|------|------|
-| `/market/ticker/{symbol}` | GET | 獲取 24 小時行情 |
-| `/market/price/{symbol}` | GET | 獲取當前價格 |
-| `/account/balance` | GET | 獲取帳戶餘額 |
+| `/market/ticker/{symbol}` | GET | 獲取 24 小時行情（支援 Redis 快取） |
+| `/market/price/{symbol}` | GET | 獲取當前價格（支援 Redis 快取） |
+| `/market/orderbook/{symbol}` | GET | 獲取訂單簿深度（支援 Redis 快取） |
+| `/market/trades/{symbol}` | GET | 獲取最近交易記錄（支援 Redis 快取） |
+| `/market/klines/{symbol}` | GET | 獲取 K 線/蠟燭圖數據（支援 Redis 快取） |
+
+### 帳戶端點
+
+| 端點 | 方法 | 說明 |
+|------|------|------|
+| `/account/balance` | GET | 獲取帳戶餘額（支援 Redis 快取） |
+| `/account/orders/open` | GET | 獲取未成交訂單（支援 Redis 快取） |
+| `/account/orders/history` | GET | 獲取歷史訂單（支援 Redis 快取） |
+| `/account/sub-accounts` | GET | 獲取子帳戶列表 |
+| `/account/sub-account/balance` | GET | 獲取子帳戶餘額 |
 
 ## 使用範例
 

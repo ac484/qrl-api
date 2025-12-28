@@ -197,7 +197,16 @@ class RedisClient:
     # ===== Price Management =====
     
     async def set_latest_price(self, price: float, volume: Optional[float] = None) -> bool:
-        """Set latest price"""
+        """
+        Set latest price permanently (no TTL) for scheduled task storage
+        
+        Args:
+            price: Current price
+            volume: Optional 24h volume
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
             key = f"bot:{config.TRADING_SYMBOL}:price:latest"
             data = {
@@ -205,14 +214,47 @@ class RedisClient:
                 "volume": str(volume) if volume else "0",
                 "timestamp": datetime.now().isoformat()
             }
-            await self.client.set(key, json.dumps(data), ex=300)  # 5 minutes TTL
+            # Store permanently without TTL
+            await self.client.set(key, json.dumps(data))
+            logger.debug(f"Set latest price (permanent): {price}")
             return True
         except Exception as e:
             logger.error(f"Failed to set latest price: {e}")
             return False
     
+    async def set_cached_price(self, price: float, volume: Optional[float] = None) -> bool:
+        """
+        Set cached price with TTL for high-frequency API queries
+        
+        Args:
+            price: Current price
+            volume: Optional 24h volume
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            key = f"bot:{config.TRADING_SYMBOL}:price:cached"
+            data = {
+                "price": str(price),
+                "volume": str(volume) if volume else "0",
+                "timestamp": datetime.now().isoformat()
+            }
+            # Store with TTL for caching
+            await self.client.set(key, json.dumps(data), ex=config.CACHE_TTL_PRICE)
+            logger.debug(f"Set cached price (TTL={config.CACHE_TTL_PRICE}s): {price}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set cached price: {e}")
+            return False
+    
     async def get_latest_price(self) -> Optional[Dict[str, Any]]:
-        """Get latest price"""
+        """
+        Get latest price (permanent storage)
+        
+        Returns:
+            Price data with timestamp, or None if not found
+        """
         try:
             key = f"bot:{config.TRADING_SYMBOL}:price:latest"
             data = await self.client.get(key)
@@ -221,6 +263,27 @@ class RedisClient:
             return None
         except Exception as e:
             logger.error(f"Failed to get latest price: {e}")
+            return None
+    
+    async def get_cached_price(self) -> Optional[Dict[str, Any]]:
+        """
+        Get cached price (with TTL)
+        Falls back to latest price if cache is expired
+        
+        Returns:
+            Price data with timestamp, or None if not found
+        """
+        try:
+            key = f"bot:{config.TRADING_SYMBOL}:price:cached"
+            data = await self.client.get(key)
+            if data:
+                return json.loads(data)
+            
+            # Fallback to permanent storage if cache is expired
+            logger.debug("Cached price expired, falling back to latest price")
+            return await self.get_latest_price()
+        except Exception as e:
+            logger.error(f"Failed to get cached price: {e}")
             return None
     
     async def add_price_to_history(self, price: float, timestamp: Optional[int] = None) -> bool:
