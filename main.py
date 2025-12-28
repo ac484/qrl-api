@@ -777,7 +777,7 @@ async def get_sub_accounts_endpoint():
         )
     
     try:
-        mode = "BROKER" if (config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER") else "SPOT"
+        mode = "BROKER" if config.is_broker_mode else "SPOT"
         logger.info(f"Fetching sub-accounts using {mode} API")
         
         # Get sub-accounts from MEXC API (auto-selects API based on config)
@@ -797,7 +797,7 @@ async def get_sub_accounts_endpoint():
         logger.warning(f"Failed to get sub-accounts: {e}")
         
         # Determine mode for error response
-        mode = "BROKER" if (config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER") else "SPOT"
+        mode = "BROKER" if config.is_broker_mode else "SPOT"
         
         # Check if it's a permission error
         error_msg = str(e).lower()
@@ -876,7 +876,7 @@ async def get_sub_account_balance_endpoint(
         )
     
     try:
-        mode = "BROKER" if (config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER") else "SPOT"
+        mode = "BROKER" if config.is_broker_mode else "SPOT"
         logger.info(f"Fetching balance for sub-account: {sub_account_identifier} using {mode} API")
         
         # Get sub-account balance from MEXC API
@@ -974,7 +974,7 @@ async def transfer_between_sub_accounts_endpoint(
         )
     
     try:
-        mode = "BROKER" if (config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER") else "SPOT"
+        mode = "BROKER" if config.is_broker_mode else "SPOT"
         
         if mode == "BROKER":
             # Broker API transfer
@@ -1044,7 +1044,7 @@ async def create_sub_account_api_key_endpoint(
         )
     
     try:
-        mode = "BROKER" if (config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER") else "SPOT"
+        mode = "BROKER" if config.is_broker_mode else "SPOT"
         
         if mode == "BROKER":
             # Broker API
@@ -1113,7 +1113,7 @@ async def delete_sub_account_api_key_endpoint(
         )
     
     # Check mode
-    mode = "BROKER" if (config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER") else "SPOT"
+    mode = "BROKER" if config.is_broker_mode else "SPOT"
     if mode == "BROKER":
         raise HTTPException(
             status_code=501,
