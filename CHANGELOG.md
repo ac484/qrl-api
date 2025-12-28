@@ -28,6 +28,15 @@
 - Included Redis CLI debugging commands and examples
 
 ### Fixed
+- 🐛 **CRITICAL: Fixed MEXC v3 API Balance Display Issue**:
+  - Fixed syntax errors in import statements across all API route files
+  - Corrected duplicate "from" keywords that prevented module loading
+  - Affected files: `account_routes.py`, `bot_routes.py`, `market_routes.py`, `status_routes.py`, `sub_account_routes.py`
+  - Total fixes: 28 import statements across 5 files
+  - Issue: Import statements were malformed after code refactoring (e.g., `from X from Y import Z`)
+  - Resolution: Restored correct Python import syntax (e.g., `from Y import Z`)
+  - Impact: All API endpoints including `/account/balance` were unavailable due to SyntaxError
+  - Verification: All modules now pass syntax validation and can be loaded successfully
 - Addressed issues #24 and #25 regarding MEXC data persistence and debugging
 
 ## [1.2.0] - 2024-12-27
