@@ -18,6 +18,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code and templates
 COPY *.py ./
+COPY api/ ./api/
+COPY infrastructure/ ./infrastructure/
+COPY models/ ./models/
+COPY services/ ./services/
+COPY repositories/ ./repositories/
+COPY domain/ ./domain/
 COPY templates/ ./templates/
 
 # Create non-root user
