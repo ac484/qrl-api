@@ -36,7 +36,7 @@ class StatusResponse(BaseModel):
 @router.get("/", response_model=Dict[str, Any])
 async def root():
     """Root endpoint - API information"""
-    from infrastructure.config.config from infrastructure.config import config
+    from infrastructure.config import config
     
     return {
         "name": "QRL Trading API",
@@ -70,8 +70,8 @@ async def health_check():
     Returns:
         Service health status
     """
-    from infrastructure.external.redis_client from infrastructure.external import redis_client
-    from infrastructure.config.config from infrastructure.config import config
+    from infrastructure.external import redis_client
+    from infrastructure.config import config
     
     # Check Redis connection
     redis_connected = redis_client.connected
@@ -105,7 +105,7 @@ async def get_status():
     Returns:
         Current bot status, daily trades, and position information
     """
-    from infrastructure.external.redis_client from infrastructure.external import redis_client
+    from infrastructure.external import redis_client
     
     try:
         # Get bot status from Redis
