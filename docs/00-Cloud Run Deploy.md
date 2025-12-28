@@ -1,3 +1,8 @@
+gcloud run revisions list --project qrl-api --service qrl-trading-api --platform managed --region asia-southeast1 --format "table(REVISION, TRAFFIC, CREATED, LAST_DEPLOYED, CONDITIONS)"
+
+gcloud run revisions list --project qrl-api --service qrl-trading-api --platform managed --region asia-southeast1 --format "value(REVISION)" | Where-Object {$_ -ne "qrl-trading-api-00071-ljp"} | ForEach-Object { gcloud run revisions delete $_ --project qrl-api --region asia-southeast1 --platform managed --quiet }
+
+
 gcloud builds submit --config=cloudbuild.yaml .
 
 gcloud builds submit --tag gcr.io/qrl-api/qrl-trading-api . && gcloud run deploy qrl-trading-api --image gcr.io/qrl-api/qrl-trading-api --platform managed --region asia-east1 --allow-unauthenticated

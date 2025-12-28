@@ -35,26 +35,49 @@ async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events"""
     # Startup
     logger.info("Starting QRL Trading API (Cloud Run mode)...")
+    logger.info(f"Listening on port: {config.PORT}")
+    logger.info(f"Host: {config.HOST}")
     
-    # Connect to Redis
-    if not await redis_client.connect():
-        logger.warning("Redis connection failed - some features may not work")
-    else:
-        logger.info("Redis connection successful")
-    
-    # Test MEXC API
+    # Connect to Redis with timeout
+    redis_connected = False
     try:
-        await mexc_client.ping()
-        logger.info("MEXC API connection successful")
+        logger.info("Connecting to Redis...")
+        # Add timeout to prevent blocking startup
+        import asyncio
+        redis_connected = await asyncio.wait_for(
+            redis_client.connect(), 
+            timeout=10.0  # 10 second timeout
+        )
+        if redis_connected:
+            logger.info("Redis connection successful")
+        else:
+            logger.warning("Redis connection failed - some features may not work")
+    except asyncio.TimeoutError:
+        logger.warning("Redis connection timeout - continuing without Redis")
     except Exception as e:
-        logger.warning(f"MEXC API connection test failed: {e}")
+        logger.warning(f"Redis connection error: {e} - continuing without Redis")
     
-    # Initialize bot status
-    if redis_client.connected:
-        await redis_client.set_bot_status("initialized", 
-            {"startup_time": datetime.now().isoformat()})
+    # Test MEXC API (non-blocking)
+    try:
+        logger.info("Testing MEXC API connection...")
+        import asyncio
+        await asyncio.wait_for(mexc_client.ping(), timeout=5.0)
+        logger.info("MEXC API connection successful")
+    except asyncio.TimeoutError:
+        logger.warning("MEXC API connection timeout - continuing anyway")
+    except Exception as e:
+        logger.warning(f"MEXC API connection test failed: {e} - continuing anyway")
+    
+    # Initialize bot status (if Redis is available)
+    if redis_connected and redis_client.connected:
+        try:
+            await redis_client.set_bot_status("initialized", 
+                {"startup_time": datetime.now().isoformat()})
+        except Exception as e:
+            logger.warning(f"Failed to set initial bot status: {e}")
     
     logger.info("QRL Trading API started successfully (Cloud Run - serverless mode)")
+    logger.info(f"Server is ready to accept requests on port {config.PORT}")
     
     yield
     
@@ -62,11 +85,21 @@ async def lifespan(app: FastAPI):
     logger.info("Shutting down QRL Trading API...")
     
     if redis_client.connected:
-        await redis_client.set_bot_status("stopped", 
-            {"shutdown_time": datetime.now().isoformat()})
-        await redis_client.close()
+        try:
+            await redis_client.set_bot_status("stopped", 
+                {"shutdown_time": datetime.now().isoformat()})
+        except Exception as e:
+            logger.warning(f"Failed to set shutdown status: {e}")
+        
+        try:
+            await redis_client.close()
+        except Exception as e:
+            logger.warning(f"Error closing Redis connection: {e}")
     
-    await mexc_client.close()
+    try:
+        await mexc_client.close()
+    except Exception as e:
+        logger.warning(f"Error closing MEXC client: {e}")
     
     logger.info("QRL Trading API shut down")
 

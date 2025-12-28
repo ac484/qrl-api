@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 
 import redis.asyncio as redis
 
-from config import config
-from utils import handle_redis_errors, RedisKeyBuilder
+from infrastructure.config.config import config
+from infrastructure.utils.utils import handle_redis_errors, RedisKeyBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,8 @@ class RedisClient:
                     config.REDIS_URL,
                     max_connections=20,
                     decode_responses=config.REDIS_DECODE_RESPONSES,
-                    socket_connect_timeout=config.REDIS_SOCKET_CONNECT_TIMEOUT,
-                    socket_timeout=config.REDIS_SOCKET_TIMEOUT,
+                    socket_connect_timeout=5,  # Reduced timeout for faster startup
+                    socket_timeout=5,  # Reduced timeout
                     health_check_interval=30
                 )
                 logger.info(f"Created Redis connection pool using REDIS_URL")
@@ -52,8 +52,8 @@ class RedisClient:
                     db=config.REDIS_DB,
                     max_connections=20,
                     decode_responses=config.REDIS_DECODE_RESPONSES,
-                    socket_connect_timeout=config.REDIS_SOCKET_CONNECT_TIMEOUT,
-                    socket_timeout=config.REDIS_SOCKET_TIMEOUT,
+                    socket_connect_timeout=5,  # Reduced timeout for faster startup
+                    socket_timeout=5,  # Reduced timeout
                     health_check_interval=30
                 )
                 logger.info(f"Created Redis connection pool at {config.REDIS_HOST}:{config.REDIS_PORT}")
@@ -61,13 +61,18 @@ class RedisClient:
             # Create Redis client from pool
             self.client = redis.Redis(connection_pool=self.pool)
             
-            # Test connection
+            # Test connection with timeout
             await self.client.ping()
             self.connected = True
+            logger.info("Redis connection established successfully")
             return True
         
         except redis.ConnectionError as e:
             logger.error(f"Failed to connect to Redis: {e}")
+            self.connected = False
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error connecting to Redis: {e}")
             self.connected = False
             return False
     

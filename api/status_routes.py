@@ -33,16 +33,26 @@ class StatusResponse(BaseModel):
     timestamp: str
 
 
-@router.get("/", response_model=Dict[str, Any])
-async def root():
-    """Root endpoint - API information"""
-    from infrastructure.config import config
-    
+@router.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    """Root endpoint - Trading Dashboard"""
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    """Render trading dashboard (alias for root)"""
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
+@router.get("/api/info", response_model=Dict[str, Any])
+async def api_info():
+    """API information endpoint"""
     return {
         "name": "QRL Trading API",
         "version": "1.0.0",
         "status": "running",
-        "environment": config.FLASK_ENV,
+        "environment": "production",  # Hardcoded - only production deployment
         "endpoints": {
             "health": "/health",
             "dashboard": "/dashboard",
@@ -54,12 +64,6 @@ async def root():
         },
         "timestamp": datetime.now().isoformat()
     }
-
-
-@router.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    """Render trading dashboard"""
-    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 @router.get("/health", response_model=HealthResponse)

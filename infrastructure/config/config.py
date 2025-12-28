@@ -9,11 +9,11 @@ from typing import Optional
 class Config:
     """Application configuration"""
     
-    # Flask Configuration
-    FLASK_ENV: str = os.getenv("FLASK_ENV", "production")
-    DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
-    PORT: int = int(os.getenv("PORT", "8080"))
-    HOST: str = os.getenv("HOST", "0.0.0.0")
+    # Flask Configuration (hardcoded for production)
+    FLASK_ENV: str = "production"
+    DEBUG: bool = False
+    PORT: int = int(os.getenv("PORT", "8080"))  # Keep as env var for Cloud Run
+    HOST: str = "0.0.0.0"
     
     # Redis Configuration
     # Support REDIS_URL for Redis Cloud (e.g., redis://user:pass@host:port/db)
@@ -67,8 +67,8 @@ class Config:
         """
         return self.SUB_ACCOUNT_NAME if self.is_broker_mode else self.SUB_ACCOUNT_ID
     
-    # Trading Configuration
-    TRADING_SYMBOL: str = os.getenv("TRADING_SYMBOL", "QRLUSDT")  # MEXC trading symbol format
+    # Trading Configuration (hardcoded - only QRL/USDT trading)
+    TRADING_SYMBOL: str = "QRLUSDT"  # MEXC trading symbol format
     
     # Strategy Parameters
     MA_SHORT_PERIOD: int = int(os.getenv("MA_SHORT_PERIOD", "7"))
@@ -88,18 +88,18 @@ class Config:
     CORE_POSITION_PCT: float = float(os.getenv("CORE_POSITION_PCT", "0.70"))  # 70% core
     USDT_RESERVE_PCT: float = float(os.getenv("USDT_RESERVE_PCT", "0.20"))  # 20% USDT reserve
     
-    # Redis Cache TTL Configuration (in seconds)
-    CACHE_TTL_PRICE: int = int(os.getenv("CACHE_TTL_PRICE", "30"))  # 30 seconds for price
-    CACHE_TTL_TICKER: int = int(os.getenv("CACHE_TTL_TICKER", "60"))  # 1 minute for ticker
-    CACHE_TTL_ORDER_BOOK: int = int(os.getenv("CACHE_TTL_ORDER_BOOK", "10"))  # 10 seconds for order book
-    CACHE_TTL_TRADES: int = int(os.getenv("CACHE_TTL_TRADES", "60"))  # 1 minute for recent trades
-    CACHE_TTL_KLINES: int = int(os.getenv("CACHE_TTL_KLINES", "300"))  # 5 minutes for klines
-    CACHE_TTL_ACCOUNT: int = int(os.getenv("CACHE_TTL_ACCOUNT", "120"))  # 2 minutes for account data
-    CACHE_TTL_ORDERS: int = int(os.getenv("CACHE_TTL_ORDERS", "30"))  # 30 seconds for orders
+    # Redis Cache TTL Configuration (hardcoded in seconds)
+    CACHE_TTL_PRICE: int = 30  # 30 seconds for price
+    CACHE_TTL_TICKER: int = 60  # 1 minute for ticker
+    CACHE_TTL_ORDER_BOOK: int = 10  # 10 seconds for order book
+    CACHE_TTL_TRADES: int = 60  # 1 minute for recent trades
+    CACHE_TTL_KLINES: int = 300  # 5 minutes for klines
+    CACHE_TTL_ACCOUNT: int = 120  # 2 minutes for account data
+    CACHE_TTL_ORDERS: int = 30  # 30 seconds for orders
     
-    # Logging
-    LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
-    LOG_FORMAT: str = "json"  # json or text
+    # Logging (hardcoded for production)
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"  # json format for Cloud Logging
     
     @classmethod
     def validate(cls) -> bool:
