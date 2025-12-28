@@ -38,8 +38,8 @@ steps:
       - '--max-instances=10'
       - '--concurrency=80'
       - '--timeout=300s'
-      # Startup and health check configuration
-      - '--startup-cpu-boost'  # Enable CPU boost during startup
+      # Startup configuration - enable CPU boost for faster cold starts
+      - '--cpu-boost'
       # Environment variables from Secret Manager
       - '--set-secrets=MEXC_API_KEY=mexc-api-key:latest,MEXC_SECRET_KEY=mexc-secret-key:latest,REDIS_URL=redis-url:latest'
 
