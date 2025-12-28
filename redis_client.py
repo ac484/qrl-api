@@ -197,7 +197,16 @@ class RedisClient:
     # ===== Price Management =====
     
     async def set_latest_price(self, price: float, volume: Optional[float] = None) -> bool:
-        """Set latest price"""
+        """
+        Set latest price permanently (no TTL) for scheduled task storage
+        
+        Args:
+            price: Current price
+            volume: Optional 24h volume
+            
+        Returns:
+            True if successful, False otherwise
+        """
         try:
             key = f"bot:{config.TRADING_SYMBOL}:price:latest"
             data = {
@@ -205,14 +214,47 @@ class RedisClient:
                 "volume": str(volume) if volume else "0",
                 "timestamp": datetime.now().isoformat()
             }
-            await self.client.set(key, json.dumps(data), ex=config.CACHE_TTL_PRICE)
+            # Store permanently without TTL
+            await self.client.set(key, json.dumps(data))
+            logger.debug(f"Set latest price (permanent): {price}")
             return True
         except Exception as e:
             logger.error(f"Failed to set latest price: {e}")
             return False
     
+    async def set_cached_price(self, price: float, volume: Optional[float] = None) -> bool:
+        """
+        Set cached price with TTL for high-frequency API queries
+        
+        Args:
+            price: Current price
+            volume: Optional 24h volume
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            key = f"bot:{config.TRADING_SYMBOL}:price:cached"
+            data = {
+                "price": str(price),
+                "volume": str(volume) if volume else "0",
+                "timestamp": datetime.now().isoformat()
+            }
+            # Store with TTL for caching
+            await self.client.set(key, json.dumps(data), ex=config.CACHE_TTL_PRICE)
+            logger.debug(f"Set cached price (TTL={config.CACHE_TTL_PRICE}s): {price}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to set cached price: {e}")
+            return False
+    
     async def get_latest_price(self) -> Optional[Dict[str, Any]]:
-        """Get latest price"""
+        """
+        Get latest price (permanent storage)
+        
+        Returns:
+            Price data with timestamp, or None if not found
+        """
         try:
             key = f"bot:{config.TRADING_SYMBOL}:price:latest"
             data = await self.client.get(key)
@@ -221,6 +263,27 @@ class RedisClient:
             return None
         except Exception as e:
             logger.error(f"Failed to get latest price: {e}")
+            return None
+    
+    async def get_cached_price(self) -> Optional[Dict[str, Any]]:
+        """
+        Get cached price (with TTL)
+        Falls back to latest price if cache is expired
+        
+        Returns:
+            Price data with timestamp, or None if not found
+        """
+        try:
+            key = f"bot:{config.TRADING_SYMBOL}:price:cached"
+            data = await self.client.get(key)
+            if data:
+                return json.loads(data)
+            
+            # Fallback to permanent storage if cache is expired
+            logger.debug("Cached price expired, falling back to latest price")
+            return await self.get_latest_price()
+        except Exception as e:
+            logger.error(f"Failed to get cached price: {e}")
             return None
     
     async def add_price_to_history(self, price: float, timestamp: Optional[int] = None) -> bool:
@@ -393,6 +456,104 @@ class RedisClient:
         except Exception as e:
             logger.error(f"Failed to get cost data: {e}")
             return {}
+    
+    # ===== Raw MEXC API Response Storage (Permanent) =====
+    
+    async def set_raw_mexc_response(self, endpoint: str, response_data: Dict[str, Any], 
+                                     metadata: Optional[Dict[str, Any]] = None) -> bool:
+        """
+        Store raw MEXC API response permanently for historical tracking and debugging
+        
+        Args:
+            endpoint: API endpoint name (e.g., "account_info", "ticker_24hr")
+            response_data: Raw response from MEXC API
+            metadata: Optional metadata (e.g., request parameters)
+        
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            timestamp = int(datetime.now().timestamp() * 1000)
+            key = f"mexc:raw:{endpoint}:latest"
+            history_key = f"mexc:raw:{endpoint}:history"
+            
+            # Prepare data with timestamp
+            data = {
+                "response": response_data,
+                "timestamp": timestamp,
+                "datetime": datetime.now().isoformat(),
+                "metadata": metadata or {}
+            }
+            
+            # Store latest response (permanent, no TTL)
+            await self.client.set(key, json.dumps(data))
+            
+            # Add to historical sorted set (keep last 1000 entries)
+            await self.client.zadd(history_key, {json.dumps(data): timestamp})
+            
+            # Trim history to last 1000 entries
+            count = await self.client.zcard(history_key)
+            if count > 1000:
+                await self.client.zremrangebyrank(history_key, 0, count - 1001)
+            
+            logger.debug(f"Stored raw MEXC response for {endpoint}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to store raw MEXC response for {endpoint}: {e}")
+            return False
+    
+    async def get_raw_mexc_response(self, endpoint: str) -> Optional[Dict[str, Any]]:
+        """
+        Get latest raw MEXC API response
+        
+        Args:
+            endpoint: API endpoint name
+            
+        Returns:
+            Raw response data with timestamp, or None if not found
+        """
+        try:
+            key = f"mexc:raw:{endpoint}:latest"
+            data = await self.client.get(key)
+            if data:
+                return json.loads(data)
+            return None
+        except Exception as e:
+            logger.error(f"Failed to get raw MEXC response for {endpoint}: {e}")
+            return None
+    
+    async def get_raw_mexc_response_history(self, endpoint: str, 
+                                           start_time: Optional[int] = None,
+                                           end_time: Optional[int] = None,
+                                           limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Get historical raw MEXC API responses within time range
+        
+        Args:
+            endpoint: API endpoint name
+            start_time: Start timestamp (milliseconds), None for earliest
+            end_time: End timestamp (milliseconds), None for latest
+            limit: Maximum number of entries to return
+            
+        Returns:
+            List of raw responses with timestamps, sorted by timestamp (newest first)
+        """
+        try:
+            history_key = f"mexc:raw:{endpoint}:history"
+            
+            # Get from sorted set
+            min_score = start_time if start_time else "-inf"
+            max_score = end_time if end_time else "+inf"
+            
+            # Get entries in reverse order (newest first)
+            entries = await self.client.zrevrangebyscore(
+                history_key, max_score, min_score, start=0, num=limit
+            )
+            
+            return [json.loads(entry) for entry in entries]
+        except Exception as e:
+            logger.error(f"Failed to get raw MEXC response history for {endpoint}: {e}")
+            return []
     
     # ===== Market Data Caching (MEXC v3 API) =====
     
