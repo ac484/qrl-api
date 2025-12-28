@@ -7,7 +7,7 @@ import time
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
-from config import config
+from infrastructure.config.config import config
 
 logger = logging.getLogger(__name__)
 

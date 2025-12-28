@@ -13,7 +13,7 @@ from urllib.parse import urlencode
 
 import httpx
 
-from config import config
+from infrastructure.config.config import config
 
 logger = logging.getLogger(__name__)
 

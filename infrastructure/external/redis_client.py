@@ -9,8 +9,8 @@ from datetime import datetime, timedelta
 
 import redis.asyncio as redis
 
-from config import config
-from utils import handle_redis_errors, RedisKeyBuilder
+from infrastructure.config.config import config
+from infrastructure.utils.utils import handle_redis_errors, RedisKeyBuilder
 
 logger = logging.getLogger(__name__)
 

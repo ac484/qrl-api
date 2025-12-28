@@ -7,9 +7,9 @@ import logging
 from datetime import datetime
 from fastapi import APIRouter, Header, HTTPException
 
-from config import config
-from mexc_client import mexc_client
-from redis_client import redis_client
+from infrastructure.config.config import config
+from infrastructure.external.mexc_client import mexc_client
+from infrastructure.external.redis_client import redis_client
 
 logger = logging.getLogger(__name__)
 
