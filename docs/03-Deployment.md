@@ -47,7 +47,7 @@ for s in mexc-api-key mexc-secret-key; do
 done
 
 # 部署
-gcloud run deploy qrl-api --source . --region us-central1 \
+gcloud run deploy qrl-api --source . --region asia-southeast1 \
   --memory 512Mi --cpu 1 --timeout 60s \
   --set-env-vars="TRADING_SYMBOL=QRLUSDT,DRY_RUN=false" \
   --set-secrets="MEXC_API_KEY=mexc-api-key:latest,MEXC_SECRET_KEY=mexc-secret-key:latest" \
@@ -57,13 +57,13 @@ gcloud run deploy qrl-api --source . --region us-central1 \
 ### Cloud Scheduler（摘要）
 以 OIDC 呼叫 Cloud Run（建議），每分鐘/3 分鐘/5 分鐘觸發：
 ```bash
-SERVICE_URL=$(gcloud run services describe qrl-api --region=us-central1 --format='value(status.url)')
+SERVICE_URL=$(gcloud run services describe qrl-api --region=asia-southeast1 --format='value(status.url)')
 gcloud iam service-accounts create scheduler-sa
-gcloud run services add-iam-policy-binding qrl-api --region=us-central1 \
+gcloud run services add-iam-policy-binding qrl-api --region=asia-southeast1 \
   --member="serviceAccount:scheduler-sa@YOUR_PROJECT.iam.gserviceaccount.com" \
   --role="roles/run.invoker"
 
-gcloud scheduler jobs create http sync-balance --location=us-central1 \
+gcloud scheduler jobs create http sync-balance --location=asia-southeast1 \
   --schedule="*/3 * * * *" \
   --uri="${SERVICE_URL}/tasks/sync-balance" \
   --http-method=POST \

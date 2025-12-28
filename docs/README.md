@@ -67,7 +67,7 @@
 │  │                                                      │   │
 │  │  ┌──────────────────────────────────────────────┐  │   │
 │  │  │     Serverless VPC Access Connector          │  │   │
-│  │  │     (us-central1)                            │  │   │
+│  │  │     (asia-southeast1)                            │  │   │
 │  │  │     - IP Range: 10.8.0.0/28                  │  │   │
 │  │  │     - Min Instances: 2                       │  │   │
 │  │  │     - Max Instances: 10                      │  │   │
@@ -103,7 +103,7 @@
 │  │  │   實例詳情:                                   │  │   │
 │  │  │   - 層級: Basic (單節點)                     │  │   │
 │  │  │   - 記憶體: 1GB                              │  │   │
-│  │  │   - 區域: us-central1-a                     │  │   │
+│  │  │   - 區域: asia-southeast1-a                     │  │   │
 │  │  │   - 版本: Redis 7.0                         │  │   │
 │  │  │   - IP: 10.0.0.3 (內網)                     │  │   │
 │  │  │   - Port: 6379                              │  │   │
@@ -147,7 +147,7 @@
 ```yaml
 資源配置:
   名稱: trading-bot-connector
-  區域: us-central1
+  區域: asia-southeast1
   網路: default (或自訂 VPC)
   IP 範圍: 10.8.0.0/28
   
@@ -1491,12 +1491,12 @@ gcloud compute networks create trading-bot-vpc \
 # 2. 建立子網路
 gcloud compute networks subnets create trading-bot-subnet \
   --network=trading-bot-vpc \
-  --region=us-central1 \
+  --region=asia-southeast1 \
   --range=10.0.0.0/24
 
 # 3. 建立 Serverless VPC Access Connector
 gcloud compute networks vpc-access connectors create trading-bot-connector \
-  --region=us-central1 \
+  --region=asia-southeast1 \
   --subnet=trading-bot-subnet \
   --min-instances=2 \
   --max-instances=10 \
@@ -1509,8 +1509,8 @@ gcloud compute networks vpc-access connectors create trading-bot-connector \
 # 建立 Memorystore Redis 實例
 gcloud redis instances create trading-bot-redis \
   --size=1 \
-  --region=us-central1 \
-  --zone=us-central1-a \
+  --region=asia-southeast1 \
+  --zone=asia-southeast1-a \
   --network=trading-bot-vpc \
   --redis-version=redis_7_0 \
   --tier=basic \
@@ -1518,7 +1518,7 @@ gcloud redis instances create trading-bot-redis \
 
 # 取得 Redis 連線資訊
 gcloud redis instances describe trading-bot-redis \
-  --region=us-central1
+  --region=asia-southeast1
 ```
 
 #### 步驟 1.4: 存儲 API 密鑰
@@ -1642,23 +1642,23 @@ if __name__ == '__main__':
 # 1. 設定 Artifact Registry
 gcloud artifacts repositories create trading-bot-repo \
   --repository-format=docker \
-  --location=us-central1
+  --location=asia-southeast1
 
 # 2. 建置映像
-gcloud builds submit --tag us-central1-docker.pkg.dev/PROJECT_ID/trading-bot-repo/trading-bot:v1
+gcloud builds submit --tag asia-southeast1-docker.pkg.dev/PROJECT_ID/trading-bot-repo/trading-bot:v1
 
 # 或使用本地 Docker
-docker build -t us-central1-docker.pkg.dev/PROJECT_ID/trading-bot-repo/trading-bot:v1 .
-docker push us-central1-docker.pkg.dev/PROJECT_ID/trading-bot-repo/trading-bot:v1
+docker build -t asia-southeast1-docker.pkg.dev/PROJECT_ID/trading-bot-repo/trading-bot:v1 .
+docker push asia-southeast1-docker.pkg.dev/PROJECT_ID/trading-bot-repo/trading-bot:v1
 ```
 
 #### 步驟 3.2: 部署 Cloud Run Service
 
 ```bash
 gcloud run deploy trading-bot \
-  --image=us-central1-docker.pkg.dev/PROJECT_ID/trading-bot-repo/trading-bot:v1 \
+  --image=asia-southeast1-docker.pkg.dev/PROJECT_ID/trading-bot-repo/trading-bot:v1 \
   --platform=managed \
-  --region=us-central1 \
+  --region=asia-southeast1 \
   --vpc-connector=trading-bot-connector \
   --vpc-egress=private-ranges-only \
   --memory=512Mi \
@@ -1682,7 +1682,7 @@ gcloud iam service-accounts create trading-bot-scheduler \
 
 # 2. 授予 Cloud Run Invoker 角色
 gcloud run services add-iam-policy-binding trading-bot \
-  --region=us-central1 \
+  --region=asia-southeast1 \
   --member="serviceAccount:trading-bot-scheduler@PROJECT_ID.iam.gserviceaccount.com" \
   --role="roles/run.invoker"
 ```
@@ -1692,12 +1692,12 @@ gcloud run services add-iam-policy-binding trading-bot \
 ```bash
 # 取得 Cloud Run URL
 SERVICE_URL=$(gcloud run services describe trading-bot \
-  --region=us-central1 \
+  --region=asia-southeast1 \
   --format='value(status.url)')
 
 # 建立 Scheduler 作業 (每分鐘執行)
 gcloud scheduler jobs create http trading-bot-trigger \
-  --location=us-central1 \
+  --location=asia-southeast1 \
   --schedule="*/1 * * * *" \
   --uri="${SERVICE_URL}/execute" \
   --http-method=POST \
@@ -1746,7 +1746,7 @@ gcloud scheduler jobs create http trading-bot-trigger \
 
 ```bash
 # 1. 手動觸發 Scheduler
-gcloud scheduler jobs run trading-bot-trigger --location=us-central1
+gcloud scheduler jobs run trading-bot-trigger --location=asia-southeast1
 
 # 2. 查看日誌
 gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=trading-bot" \
