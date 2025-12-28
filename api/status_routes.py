@@ -36,13 +36,11 @@ class StatusResponse(BaseModel):
 @router.get("/", response_model=Dict[str, Any])
 async def root():
     """Root endpoint - API information"""
-    from infrastructure.config import config
-    
     return {
         "name": "QRL Trading API",
         "version": "1.0.0",
         "status": "running",
-        "environment": config.FLASK_ENV,
+        "environment": "production",  # Hardcoded - only production deployment
         "endpoints": {
             "health": "/health",
             "dashboard": "/dashboard",
