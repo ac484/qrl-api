@@ -40,13 +40,22 @@ class Config:
     # 1. SPOT API: For regular users (uses numeric subAccountId)
     # 2. BROKER API: For broker/institutional accounts (uses string subAccount name)
     SUB_ACCOUNT_MODE: str = os.getenv("SUB_ACCOUNT_MODE", "SPOT")  # SPOT or BROKER
-    IS_BROKER_ACCOUNT: bool = os.getenv("IS_BROKER_ACCOUNT", "false").lower() == "true"
     
     # Spot API sub-account (regular users) - uses numeric ID
     SUB_ACCOUNT_ID: Optional[str] = os.getenv("SUB_ACCOUNT_ID")
     
     # Broker API sub-account (broker users) - uses string name
     SUB_ACCOUNT_NAME: Optional[str] = os.getenv("SUB_ACCOUNT_NAME")
+    
+    @property
+    def is_broker_mode(self) -> bool:
+        """
+        Check if operating in BROKER mode
+        
+        Returns:
+            True if in BROKER mode, False if in SPOT mode
+        """
+        return self.SUB_ACCOUNT_MODE.upper() == "BROKER"
     
     @property
     def active_sub_account_identifier(self) -> Optional[str]:
@@ -56,13 +65,10 @@ class Config:
         Returns:
             SUB_ACCOUNT_NAME for BROKER mode, SUB_ACCOUNT_ID for SPOT mode
         """
-        if self.SUB_ACCOUNT_MODE == "BROKER" or self.IS_BROKER_ACCOUNT:
-            return self.SUB_ACCOUNT_NAME
-        return self.SUB_ACCOUNT_ID
+        return self.SUB_ACCOUNT_NAME if self.is_broker_mode else self.SUB_ACCOUNT_ID
     
     # Trading Configuration
-    TRADING_PAIR: str = os.getenv("TRADING_PAIR", "QRLUSDT")
-    TRADING_SYMBOL: str = os.getenv("TRADING_SYMBOL", "QRLUSDT")  # MEXC format
+    TRADING_SYMBOL: str = os.getenv("TRADING_SYMBOL", "QRLUSDT")  # MEXC trading symbol format
     
     # Strategy Parameters
     MA_SHORT_PERIOD: int = int(os.getenv("MA_SHORT_PERIOD", "7"))
@@ -122,7 +128,7 @@ class Config:
             "redis_host": cls.REDIS_HOST,
             "redis_port": cls.REDIS_PORT,
             "mexc_base_url": cls.MEXC_BASE_URL,
-            "trading_pair": cls.TRADING_PAIR,
+            "trading_symbol": cls.TRADING_SYMBOL,
             "ma_short_period": cls.MA_SHORT_PERIOD,
             "ma_long_period": cls.MA_LONG_PERIOD,
             "rsi_period": cls.RSI_PERIOD,
@@ -131,7 +137,6 @@ class Config:
             "usdt_reserve_pct": cls.USDT_RESERVE_PCT,
             "sub_account_configured": bool(cls.SUB_ACCOUNT_ID or cls.SUB_ACCOUNT_NAME),
             "sub_account_mode": cls.SUB_ACCOUNT_MODE,
-            "is_broker_account": cls.IS_BROKER_ACCOUNT,
         }
 
 

@@ -708,7 +708,7 @@ class MEXCClient:
         from config import config
         
         try:
-            if config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER":
+            if config.is_broker_mode:
                 logger.info("Using Broker API for sub-accounts")
                 result = await self.get_broker_sub_accounts()
                 return result.get("data", [])
@@ -742,7 +742,7 @@ class MEXCClient:
         """
         from config import config
         
-        if config.IS_BROKER_ACCOUNT or config.SUB_ACCOUNT_MODE == "BROKER":
+        if config.is_broker_mode:
             return await self.get_broker_sub_account_assets(identifier)
         else:
             raise NotImplementedError(
