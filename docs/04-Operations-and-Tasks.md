@@ -3,9 +3,9 @@
 **目標**：知道有哪些定時任務、如何確認執行、如何快速查問題。
 
 ### 任務總覽（預設頻率）
-- `tasks/update-price`：每 1 分鐘，抓最新價格與 24h 數據，寫入永久層與快取層。  
-- `tasks/sync-balance`：每 3 分鐘，抓帳戶餘額與原始回應，寫入 `mexc:raw:*` 與倉位。  
-- `tasks/update-cost`：每 5 分鐘，更新成本/未實現損益。  
+- `tasks/sync-balance` (01-min-job)：每 1 分鐘，抓帳戶餘額與原始回應，寫入 `mexc:raw:*` 與倉位。  
+- `tasks/update-price` (05-min-job)：每 5 分鐘，抓最新價格與 24h 數據，寫入永久層與快取層。  
+- `tasks/update-cost` (15-min-job)：每 15 分鐘，更新成本/未實現損益。  
 - 授權：支援 `X-CloudScheduler` 及 OIDC `Authorization: Bearer ...`（建議用 OIDC）。
 
 ### 快速監控

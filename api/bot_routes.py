@@ -34,7 +34,7 @@ class ExecuteResponse(BaseModel):
 @router.post("/control", response_model=Dict[str, Any])
 async def control_bot(request: ControlRequest):
     """
-    Control bot operations (start/stop)
+    Control bot operations (start/stop) - Stateless mode
     
     Args:
         request: Control request with action and dry_run flag
@@ -42,8 +42,6 @@ async def control_bot(request: ControlRequest):
     Returns:
         Status of the control operation
     """
-    from infrastructure.external import redis_client
-    
     try:
         action = request.action.upper()
         
@@ -53,16 +51,13 @@ async def control_bot(request: ControlRequest):
                 detail=f"Invalid action: {action}. Must be START or STOP"
             )
         
-        # Update bot status in Redis
+        # No state storage (stateless mode)
         if action == "START":
-            await redis_client.client.set("bot:status", "running")
-            await redis_client.client.set("bot:dry_run", str(request.dry_run))
-            logger.info(f"Bot started (dry_run={request.dry_run})")
-            message = f"Bot started in {'DRY RUN' if request.dry_run else 'LIVE'} mode"
+            logger.info(f"Bot start requested (dry_run={request.dry_run})")
+            message = f"Bot start signal sent in {'DRY RUN' if request.dry_run else 'LIVE'} mode"
         else:
-            await redis_client.client.set("bot:status", "stopped")
-            logger.info("Bot stopped")
-            message = "Bot stopped"
+            logger.info("Bot stop requested")
+            message = "Bot stop signal sent"
         
         return {
             "success": True,

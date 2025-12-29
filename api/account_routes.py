@@ -70,39 +70,73 @@ async def get_account_balance():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/balance/redis")
-async def get_account_balance_from_redis():
+@router.get("/orders")
+async def get_orders(symbol: str = "QRLUSDT", limit: int = 50):
     """
-    Get account balance from Redis cache (may be stale)
+    Get user's open orders (real-time from MEXC API)
     
+    Args:
+        symbol: Trading symbol (default: QRLUSDT)
+        limit: Number of orders to return
+        
     Returns:
-        Cached position data from Redis
+        List of open orders with details
     """
-    from infrastructure.external.redis_client import redis_client
+    from infrastructure.external.mexc_client import mexc_client
     
     try:
-        position = await redis_client.get_position()
-        
-        if not position:
-            raise HTTPException(
-                status_code=404,
-                detail="No position data in Redis - run /tasks/sync-balance first"
-            )
-        
-        logger.info("Position data retrieved from Redis")
-        
-        return {
-            "success": True,
-            "source": "redis",
-            "position": position,
-            "warning": "This data may be stale - use /account/balance for real-time data",
-            "timestamp": datetime.now().isoformat()
-        }
+        async with mexc_client:
+            # Get open orders from MEXC
+            orders = await mexc_client.get_open_orders(symbol)
+            
+            logger.info(f"Retrieved {len(orders)} open orders for {symbol}")
+            
+            return {
+                "success": True,
+                "source": "api",
+                "symbol": symbol,
+                "orders": orders,
+                "count": len(orders),
+                "timestamp": datetime.now().isoformat()
+            }
     
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Failed to get position from Redis: {e}")
+        logger.error(f"Failed to get orders for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/trades")
+async def get_trades(symbol: str = "QRLUSDT", limit: int = 50):
+    """
+    Get user's trade history (real-time from MEXC API)
+    
+    Args:
+        symbol: Trading symbol (default: QRLUSDT)
+        limit: Number of trades to return
+        
+    Returns:
+        List of user's executed trades
+    """
+    from infrastructure.external.mexc_client import mexc_client
+    
+    try:
+        async with mexc_client:
+            # Get user's trades from MEXC
+            trades = await mexc_client.get_my_trades(symbol, limit=limit)
+            
+            logger.info(f"Retrieved {len(trades)} trades for {symbol}")
+            
+            return {
+                "success": True,
+                "source": "api",
+                "symbol": symbol,
+                "trades": trades,
+                "count": len(trades),
+                "timestamp": datetime.now().isoformat()
+            }
+    
+    except Exception as e:
+        logger.error(f"Failed to get trades for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

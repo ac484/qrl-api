@@ -74,28 +74,22 @@ async def health_check():
     Returns:
         Service health status
     """
-    from infrastructure.external import redis_client
     from infrastructure.config import config
-    
-    # Check Redis connection
-    redis_connected = redis_client.connected
     
     # Check MEXC API configuration
     mexc_api_configured = bool(config.MEXC_API_KEY and config.MEXC_SECRET_KEY)
     
     # Determine overall status
-    if redis_connected and mexc_api_configured:
+    if mexc_api_configured:
         status = "healthy"
-    elif redis_connected:
-        status = "degraded"  # Redis OK but API not configured
     else:
-        status = "unhealthy"  # Redis connection failed
+        status = "degraded"  # API not configured
     
-    logger.info(f"Health check: {status} (Redis: {redis_connected}, MEXC: {mexc_api_configured})")
+    logger.info(f"Health check: {status} (MEXC: {mexc_api_configured})")
     
     return HealthResponse(
         status=status,
-        redis_connected=redis_connected,
+        redis_connected=False,  # No longer using Redis
         mexc_api_configured=mexc_api_configured,
         timestamp=datetime.now().isoformat()
     )
@@ -107,41 +101,14 @@ async def get_status():
     Get trading bot status
     
     Returns:
-        Current bot status, daily trades, and position information
+        Current bot status (simplified without Redis)
     """
-    from infrastructure.external import redis_client
+    logger.info("Status retrieved - Direct API mode (no Redis)")
     
-    try:
-        # Get bot status from Redis
-        bot_status = await redis_client.client.get("bot:status") or "stopped"
-        
-        # Get daily trades count
-        daily_trades = await redis_client.get_daily_trades()
-        
-        # Get position data
-        position = await redis_client.get_position()
-        
-        # Get position layers
-        position_layers = await redis_client.get_position_layers()
-        
-        logger.info(f"Status retrieved - Bot: {bot_status}, Trades: {daily_trades}")
-        
-        return StatusResponse(
-            bot_status=bot_status,
-            daily_trades=daily_trades,
-            position=position if position else None,
-            position_layers=position_layers if position_layers else None,
-            timestamp=datetime.now().isoformat()
-        )
-    
-    except Exception as e:
-        logger.error(f"Failed to get status: {e}")
-        
-        # Return partial status on error
-        return StatusResponse(
-            bot_status="unknown",
-            daily_trades=0,
-            position=None,
-            position_layers=None,
-            timestamp=datetime.now().isoformat()
-        )
+    return StatusResponse(
+        bot_status="running",  # Simplified: always running when API is up
+        daily_trades=0,  # Not tracked without Redis
+        position=None,  # Would need to fetch from MEXC if needed
+        position_layers=None,  # Not available without Redis
+        timestamp=datetime.now().isoformat()
+    )

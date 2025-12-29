@@ -322,7 +322,133 @@
                 <span class="balance-value" id="last-adjust">--</span>
             </div>
         </div>
+        
+        <div class="balance-details">
+            <h2>📋 我的訂單 (My Orders)</h2>
+            <div id="orders-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>訂單ID</th>
+                            <th>類型</th>
+                            <th>方向</th>
+                            <th>價格</th>
+                            <th>數量</th>
+                            <th>已成交</th>
+                            <th>狀態</th>
+                            <th>時間</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-body">
+                        <tr>
+                            <td colspan="8" class="loading">正在載入訂單數據...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="balance-details">
+            <h2>💱 我的成交 (My Trades)</h2>
+            <div id="trades-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>成交ID</th>
+                            <th>方向</th>
+                            <th>價格</th>
+                            <th>數量</th>
+                            <th>成交金額</th>
+                            <th>手續費</th>
+                            <th>時間</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trades-body">
+                        <tr>
+                            <td colspan="7" class="loading">正在載入成交數據...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
+    
+    <style>
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .data-table th {
+            background-color: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        .data-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            color: #555;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .data-table .loading {
+            text-align: center;
+            color: #999;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .data-table .no-data {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+        }
+        
+        .buy-side {
+            color: #26de81;
+            font-weight: 600;
+        }
+        
+        .sell-side {
+            color: #fc5c65;
+            font-weight: 600;
+        }
+        
+        .order-status {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-new {
+            background-color: #e3f2fd;
+            color: #1976d2;
+        }
+        
+        .status-filled {
+            background-color: #e8f5e9;
+            color: #388e3c;
+        }
+        
+        .status-partially-filled {
+            background-color: #fff3e0;
+            color: #f57c00;
+        }
+        
+        .status-canceled {
+            background-color: #ffebee;
+            color: #d32f2f;
+        }
+    </style>
     
     <script>
         let currentAccount = 'main';
@@ -563,11 +689,83 @@ async function loadSubAccounts() {
             }
         }
         
+        async function loadOrders() {
+            try {
+                const data = await fetchData('/account/orders?symbol=QRLUSDT&limit=20');
+                const ordersBody = document.getElementById('orders-body');
+                
+                if (data && data.orders && data.orders.length > 0) {
+                    ordersBody.innerHTML = data.orders.map(order => {
+                        const side = order.side === 'BUY' ? 'buy-side' : 'sell-side';
+                        const statusClass = `status-${order.status.toLowerCase().replace('_', '-')}`;
+                        const time = new Date(order.time || order.updateTime).toLocaleString('zh-TW');
+                        
+                        return `
+                            <tr>
+                                <td>${order.orderId}</td>
+                                <td>${order.type}</td>
+                                <td class="${side}">${order.side}</td>
+                                <td>${parseFloat(order.price).toFixed(6)}</td>
+                                <td>${parseFloat(order.origQty).toFixed(4)}</td>
+                                <td>${parseFloat(order.executedQty).toFixed(4)}</td>
+                                <td><span class="order-status ${statusClass}">${order.status}</span></td>
+                                <td>${time}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    ordersBody.innerHTML = '<tr><td colspan="8" class="no-data">目前沒有未完成訂單</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to load orders:', error);
+                document.getElementById('orders-body').innerHTML = 
+                    '<tr><td colspan="8" class="no-data">載入訂單失敗</td></tr>';
+            }
+        }
+        
+        async function loadTrades() {
+            try {
+                const data = await fetchData('/account/trades?symbol=QRLUSDT&limit=20');
+                const tradesBody = document.getElementById('trades-body');
+                
+                if (data && data.trades && data.trades.length > 0) {
+                    tradesBody.innerHTML = data.trades.map(trade => {
+                        const side = trade.isBuyer ? 'buy-side' : 'sell-side';
+                        const sideText = trade.isBuyer ? 'BUY' : 'SELL';
+                        const time = new Date(trade.time).toLocaleString('zh-TW');
+                        const quoteQty = parseFloat(trade.quoteQty || 0);
+                        const commission = parseFloat(trade.commission || 0);
+                        const commissionAsset = trade.commissionAsset || '';
+                        
+                        return `
+                            <tr>
+                                <td>${trade.id}</td>
+                                <td class="${side}">${sideText}</td>
+                                <td>${parseFloat(trade.price).toFixed(6)}</td>
+                                <td>${parseFloat(trade.qty).toFixed(4)}</td>
+                                <td>${quoteQty.toFixed(2)} USDT</td>
+                                <td>${commission.toFixed(6)} ${commissionAsset}</td>
+                                <td>${time}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tradesBody.innerHTML = '<tr><td colspan="7" class="no-data">目前沒有成交記錄</td></tr>';
+                }
+            } catch (error) {
+                console.error('Failed to load trades:', error);
+                document.getElementById('trades-body').innerHTML = 
+                    '<tr><td colspan="7" class="no-data">載入成交記錄失敗</td></tr>';
+            }
+        }
+        
         async function refreshData() {
             // Load all data sources
             const balances = await loadAccountBalance();  // Real-time API balance (PRIMARY and ONLY source)
             const price = await loadPrice();               // Current market price
             const position = await loadStatus();           // Bot analytics only (avg_cost, PnL, position layers)
+            await loadOrders();                            // User's open orders
+            await loadTrades();                            // User's trade history
             
             // ONLY USE real-time API balance - it's the most accurate and up-to-date
             // API balance reflects all activities (bot trades + manual deposits/withdrawals)

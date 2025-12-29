@@ -15,7 +15,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from infrastructure.config.config import config
 from infrastructure.external.mexc_client import mexc_client
-from infrastructure.external.redis_client import redis_client
 
 # Configure logging
 logging.basicConfig(
@@ -34,28 +33,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Lifespan context manager for startup and shutdown events"""
     # Startup
-    logger.info("Starting QRL Trading API (Cloud Run mode)...")
+    logger.info("Starting QRL Trading API (Cloud Run mode - Direct MEXC API, No Redis)...")
     logger.info(f"Listening on port: {config.PORT}")
     logger.info(f"Host: {config.HOST}")
-    
-    # Connect to Redis with timeout
-    redis_connected = False
-    try:
-        logger.info("Connecting to Redis...")
-        # Add timeout to prevent blocking startup
-        import asyncio
-        redis_connected = await asyncio.wait_for(
-            redis_client.connect(), 
-            timeout=10.0  # 10 second timeout
-        )
-        if redis_connected:
-            logger.info("Redis connection successful")
-        else:
-            logger.warning("Redis connection failed - some features may not work")
-    except asyncio.TimeoutError:
-        logger.warning("Redis connection timeout - continuing without Redis")
-    except Exception as e:
-        logger.warning(f"Redis connection error: {e} - continuing without Redis")
     
     # Test MEXC API (non-blocking)
     try:
@@ -68,33 +48,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"MEXC API connection test failed: {e} - continuing anyway")
     
-    # Initialize bot status (if Redis is available)
-    if redis_connected and redis_client.connected:
-        try:
-            await redis_client.set_bot_status("initialized", 
-                {"startup_time": datetime.now().isoformat()})
-        except Exception as e:
-            logger.warning(f"Failed to set initial bot status: {e}")
-    
-    logger.info("QRL Trading API started successfully (Cloud Run - serverless mode)")
+    logger.info("QRL Trading API started successfully (Cloud Run - Direct API mode, No Redis)")
     logger.info(f"Server is ready to accept requests on port {config.PORT}")
     
     yield
     
     # Shutdown
     logger.info("Shutting down QRL Trading API...")
-    
-    if redis_client.connected:
-        try:
-            await redis_client.set_bot_status("stopped", 
-                {"shutdown_time": datetime.now().isoformat()})
-        except Exception as e:
-            logger.warning(f"Failed to set shutdown status: {e}")
-        
-        try:
-            await redis_client.close()
-        except Exception as e:
-            logger.warning(f"Error closing Redis connection: {e}")
     
     try:
         await mexc_client.close()
