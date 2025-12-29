@@ -15,36 +15,20 @@ services/
    ├─ price_repo_service.py    # 封裝價格倉庫操作（price_repo），提供歷史價格、統計、最新價格接口
    ├─ mexc_client_service.py   # 封裝 MEXC API 調用，對外提供 get_ticker_24hr, get_orderbook, get_klines 等方法
 
-或者
 
-services/trading/
-├── order_service.py       # 下單、撤單、查單
-├── position_service.py    # 持倉計算、平倉策略
-├── risk_service.py        # 風險檢查（風險規則 + 檢查）
-├── strategy_service.py    # 策略選擇與信號觸發
-└── utils.py               # trading 相關工具函數
+services\market\market_service.py
 services/market/
-├── data_service.py        # 行情資料獲取、歷史數據
-├── price_service.py       # 即時價格、Kline、指標計算
-├── feed_service.py        # 市場事件推送 / 訂閱
-└── utils.py               # market 相關工具函數
+├── data_service.py       # 抓行情、Kline、深度、歷史資料
+├── cache_service.py      # market_cache_service.py 可保留
+├── client_service.py     # mexc_client_service.py 可合併到這
+├── price_service.py      # price_repo_service.py 改名，負責價格計算、指標
+└── market_service.py     # 總控，調用上面各 service
 
-或者
-
-services/
-├── trading_service.py       # legacy/總控，可以慢慢拆掉
-├── market_service.py        # legacy/總控
-├── trading/
-│   ├── order_service.py
-│   ├── position_service.py
-│   ├── risk_service.py
-│   ├── strategy_service.py
-│   └── utils.py
-└── market/
-    ├── data_service.py
-    ├── price_service.py
-    ├── feed_service.py
-    └── utils.py
-
-
-選合適方案
+services\trading\trading_service.py
+services/trading/risk/
+├── __init__.py
+├── position_limit.py      # 持倉上限檢查
+├── pnl_limit.py           # 未實現損益檢查
+├── exposure_limit.py      # 整體風險敞口檢查
+├── leverage_check.py      # 槓桿檢查
+└── risk_service.py        # 總控，整合所有檢查
