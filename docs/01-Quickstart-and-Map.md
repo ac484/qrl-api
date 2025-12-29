@@ -50,5 +50,5 @@ curl http://localhost:8080/status          # 應有 latest_price/position 字段
 
 ### 常見快速解法
 - 連不上 MEXC：確認 API Key 只開 Spot Trading、未過期、未打開提款權限。
-- Redis 無資料：確定 Scheduler 任務有跑（見 04），或本地先手動呼叫 `/tasks/update-price`。
+- Redis 無資料：確定 Scheduler 任務有跑（見 04），或本地先手動呼叫 `/tasks/05-min-job`。
 - Balance 為 0：優先信任 API 回傳；若 API 正常但顯示異常，檢查 07 提到的資料一致性修復。
