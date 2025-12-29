@@ -2,18 +2,18 @@
 # 此配置文件定義了 3 個 Cloud Scheduler jobs
 # 用於 Google Cloud Run 的自動化任務調度
 
-# Job 1: 餘額同步 - 每 3 分鐘執行一次
+# Job 1: 餘額同步 - 每 1 分鐘執行一次
 ---
 apiVersion: cloudscheduler.cnrm.cloud.google.com/v1beta1
 kind: CloudSchedulerJob
 metadata:
-  name: qrl-sync-balance-job
+  name: 01-min-job
   annotations:
     cnrm.cloud.google.com/project-id: "qrl-api"  # 替換為您的專案 ID
 spec:
   location: asia-southeast1
-  description: "Sync MEXC account balance to Redis every 3 minutes"
-  schedule: "*/3 * * * *"  # 每 3 分鐘執行
+  description: "Sync MEXC account balance to Redis every 1 minute"
+  schedule: "*/1 * * * *"  # 每 1 分鐘執行
   timeZone: "Asia/Taipei"
   attemptDeadline: "60s"
   retryConfig:
@@ -31,17 +31,17 @@ spec:
     body: "{}"
 
 ---
-# Job 2: 價格更新 - 每 3 分鐘執行一次
+# Job 2: 價格更新 - 每 5 分鐘執行一次
 apiVersion: cloudscheduler.cnrm.cloud.google.com/v1beta1
 kind: CloudSchedulerJob
 metadata:
-  name: qrl-update-price-job
+  name: 05-min-job
   annotations:
     cnrm.cloud.google.com/project-id: "qrl-api"  # 替換為您的專案 ID
 spec:
   location: asia-southeast1
-  description: "Update QRL/USDT price from MEXC every 3 minutes"
-  schedule: "*/3 * * * *"  # 每 3 分鐘執行
+  description: "Update QRL/USDT price from MEXC every 5 minutes"
+  schedule: "*/5 * * * *"  # 每 5 分鐘執行
   timeZone: "Asia/Taipei"
   attemptDeadline: "60s"
   retryConfig:
@@ -63,7 +63,7 @@ spec:
 apiVersion: cloudscheduler.cnrm.cloud.google.com/v1beta1
 kind: CloudSchedulerJob
 metadata:
-  name: qrl-update-cost-job
+  name: 15-min-job
   annotations:
     cnrm.cloud.google.com/project-id: "qrl-api"  # 替換為您的專案 ID
 spec:
