@@ -5,7 +5,13 @@
 - [Change Log](https://www.mexc.com/api-docs/spot-v3/change-log)
 - [FAQs](https://www.mexc.com/api-docs/spot-v3/faqs)
 - [General Info](https://www.mexc.com/api-docs/spot-v3/general-info)
+  - [Endpoints & security](https://www.mexc.com/api-docs/spot-v3/general-info#endpoint-security-type) – Base URLs, signature rules.
+  - [Timing & recvWindow](https://www.mexc.com/api-docs/spot-v3/general-info#timestamp-recvwindow) – Server time and request validity.
+  - [Limits & weights](https://www.mexc.com/api-docs/spot-v3/general-info#limit-quotas) – Rate limits, IP weights.
+  - [Error codes](https://www.mexc.com/api-docs/spot-v3/general-info#error-codes) – Common error meanings.
 - [Public API Definitions](https://www.mexc.com/api-docs/spot-v3/public-api-definitions)
+  - [Data types](https://www.mexc.com/api-docs/spot-v3/public-api-definitions#definitions) – Standard fields and formats.
+  - [Enums](https://www.mexc.com/api-docs/spot-v3/public-api-definitions#enum-definitions) – Order types, sides, timeInForce, interval values.
 - [Official SDK](https://github.com/mexcdevelop/mexc-api-sdk)
 
 ### REST – Public & Market Data
