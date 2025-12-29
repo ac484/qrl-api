@@ -19,6 +19,11 @@ class BalanceService:
         self.redis = redis_client
         self.cache_ttl = cache_ttl
 
+    def _has_credentials(self) -> bool:
+        if not hasattr(self.mexc, "api_key"):
+            return True
+        return bool(getattr(self.mexc, "api_key", None) and getattr(self.mexc, "secret_key", None))
+
     async def _cache_snapshot(self, snapshot: Dict[str, Any]) -> None:
         if not self.redis:
             return
@@ -54,6 +59,12 @@ class BalanceService:
             raise ValueError("Missing QRL/USDT price")
 
     async def get_account_balance(self) -> Dict[str, Any]:
+        if not self._has_credentials():
+            cached = await self._cached_response(ValueError("MEXC API credentials required"))
+            if cached:
+                return cached
+            raise ValueError("MEXC API credentials required")
+
         try:
             async with self.mexc:
                 snapshot = await self.mexc.get_balance_snapshot()

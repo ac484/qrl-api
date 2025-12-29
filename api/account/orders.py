@@ -11,12 +11,19 @@ router = APIRouter(prefix="/account", tags=["Account"])
 logger = logging.getLogger(__name__)
 
 
+def _has_credentials(mexc_client) -> bool:
+    return bool(getattr(mexc_client, "api_key", None) and getattr(mexc_client, "secret_key", None))
+
+
 @router.get("/orders")
 async def get_orders():
     """Get user's open orders for QRL/USDT (real-time from MEXC API)."""
     from infrastructure.external.mexc_client import mexc_client
 
     symbol = QRL_USDT_SYMBOL
+    if not _has_credentials(mexc_client):
+        raise HTTPException(status_code=503, detail="MEXC API credentials required for orders")
+
     try:
         async with mexc_client:
             orders = await mexc_client.get_open_orders(symbol)

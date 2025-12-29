@@ -26,6 +26,9 @@ async def get_account_balance():
         snapshot = await service.get_account_balance()
         BalanceService.to_usd_values(snapshot)
         return snapshot
+    except ValueError as exc:
+        logger.error(f"Failed to get account balance: {exc}")
+        raise HTTPException(status_code=503, detail=str(exc))
     except Exception as exc:  # pragma: no cover - FastAPI will surface HTTP 500
         logger.error(f"Failed to get account balance: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
