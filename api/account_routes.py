@@ -70,6 +70,76 @@ async def get_account_balance():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/orders")
+async def get_orders(symbol: str = "QRLUSDT", limit: int = 50):
+    """
+    Get user's open orders (real-time from MEXC API)
+    
+    Args:
+        symbol: Trading symbol (default: QRLUSDT)
+        limit: Number of orders to return
+        
+    Returns:
+        List of open orders with details
+    """
+    from infrastructure.external.mexc_client import mexc_client
+    
+    try:
+        async with mexc_client:
+            # Get open orders from MEXC
+            orders = await mexc_client.get_open_orders(symbol)
+            
+            logger.info(f"Retrieved {len(orders)} open orders for {symbol}")
+            
+            return {
+                "success": True,
+                "source": "api",
+                "symbol": symbol,
+                "orders": orders,
+                "count": len(orders),
+                "timestamp": datetime.now().isoformat()
+            }
+    
+    except Exception as e:
+        logger.error(f"Failed to get orders for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/trades")
+async def get_trades(symbol: str = "QRLUSDT", limit: int = 50):
+    """
+    Get user's trade history (real-time from MEXC API)
+    
+    Args:
+        symbol: Trading symbol (default: QRLUSDT)
+        limit: Number of trades to return
+        
+    Returns:
+        List of user's executed trades
+    """
+    from infrastructure.external.mexc_client import mexc_client
+    
+    try:
+        async with mexc_client:
+            # Get user's trades from MEXC
+            trades = await mexc_client.get_my_trades(symbol, limit=limit)
+            
+            logger.info(f"Retrieved {len(trades)} trades for {symbol}")
+            
+            return {
+                "success": True,
+                "source": "api",
+                "symbol": symbol,
+                "trades": trades,
+                "count": len(trades),
+                "timestamp": datetime.now().isoformat()
+            }
+    
+    except Exception as e:
+        logger.error(f"Failed to get trades for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/sub-accounts")
 async def get_sub_accounts():
     """
