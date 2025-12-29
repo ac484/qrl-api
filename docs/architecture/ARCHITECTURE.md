@@ -77,22 +77,31 @@ qrl-api/
 │
 ├── domain/                 # Domain Layer (Business Logic)
 │   ├── __init__.py
-│   ├── interfaces.py       # Abstract interfaces for DIP
-│   ├── trading_strategy.py # Pure strategy logic
-│   ├── risk_manager.py     # Risk control rules
-│   └── position_manager.py # Position calculations
+│   ├── interfaces/         # Abstract interfaces for DIP
+│   │   ├── account.py
+│   │   ├── cost.py
+│   │   ├── market.py
+│   │   ├── position.py
+│   │   ├── price.py
+│   │   └── trade.py
+│   ├── trading_strategy/   # Pure strategy logic
+│   │   └── core.py
+│   ├── risk_manager/       # Risk control rules
+│   │   └── core.py
+│   └── position_manager/   # Position calculations
+│       └── core.py
 │
 ├── services/               # Application Services
 │   ├── __init__.py
-│   ├── trading_service.py  # Trading orchestration
-│   └── market_service.py   # Market data operations
+│   ├── trading_service.py  # Trading orchestration (wrapper)
+│   └── market_service.py   # Market data operations (wrapper)
 │
 ├── repositories/           # Data Access Layer
 │   ├── __init__.py
-│   ├── position_repository.py
-│   ├── price_repository.py
-│   ├── trade_repository.py
-│   └── cost_repository.py
+│   ├── position_repository.py  # Wrapper
+│   ├── price_repository.py     # Wrapper
+│   ├── trade_repository.py     # Wrapper
+│   └── cost_repository.py      # Wrapper
 │
 ├── models/                 # Data Models
 │   ├── __init__.py
@@ -100,7 +109,7 @@ qrl-api/
 │   └── account_data.py
 │
 ├── main.py                 # Application entry point (minimal)
-├── config.py               # Configuration management
+├── config.py               # Configuration management wrapper
 └── bot.py                  # Legacy bot (to be refactored)
 ```
 
@@ -108,7 +117,7 @@ qrl-api/
 
 ### Interfaces (Dependency Inversion Principle)
 
-**File**: `domain/interfaces.py`
+**File**: `domain/interfaces/`
 
 Defines abstract interfaces to decouple domain logic from infrastructure:
 
@@ -121,7 +130,7 @@ Defines abstract interfaces to decouple domain logic from infrastructure:
 
 ### Trading Strategy
 
-**File**: `domain/trading_strategy.py`
+**File**: `domain/trading_strategy/core.py`
 
 Pure business logic for trading signal generation:
 
@@ -141,7 +150,7 @@ class TradingStrategy:
 
 ### Risk Manager
 
-**File**: `domain/risk_manager.py`
+**File**: `domain/risk_manager/core.py`
 
 Risk control rules and validation:
 
@@ -164,7 +173,7 @@ class RiskManager:
 
 ### Position Manager
 
-**File**: `domain/position_manager.py`
+**File**: `domain/position_manager/core.py`
 
 Position sizing and P&L calculations:
 
@@ -220,8 +229,8 @@ Account management endpoints:
 
 ### 1. Single Responsibility Principle (SRP)
 - Each module has one reason to change
-- `trading_strategy.py` - Only changes when strategy logic changes
-- `risk_manager.py` - Only changes when risk rules change
+- `trading_strategy/core.py` - Only changes when strategy logic changes
+- `risk_manager/core.py` - Only changes when risk rules change
 - `market_routes.py` - Only changes when API contracts change
 
 ### 2. Dependency Inversion Principle (DIP)

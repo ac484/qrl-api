@@ -3,7 +3,7 @@ Trading strategy domain logic
 Pure business logic without infrastructure dependencies
 """
 from typing import Dict, Any
-import config
+from infrastructure.config.config import config
 
 
 class TradingStrategy:

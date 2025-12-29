@@ -2,7 +2,7 @@
 Position management domain logic
 """
 from typing import Dict, Any
-import config
+from infrastructure.config.config import config
 
 
 class PositionManager:

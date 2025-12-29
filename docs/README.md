@@ -1561,7 +1561,7 @@ trading-bot/
 │   │   └── firestore_service.py
 │   └── utils/
 │       ├── indicators.py
-│       └── risk_manager.py
+│       └── risk_manager/core.py
 └── tests/
     └── test_strategies.py
 ```

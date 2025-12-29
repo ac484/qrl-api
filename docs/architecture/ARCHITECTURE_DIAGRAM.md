@@ -71,24 +71,24 @@ Issues:
 │                      Domain Layer                               │
 │                 Pure Business Logic                             │
 ├─────────────────────────────────────────────────────────────────┤
-│  domain/interfaces.py                                           │
+│  domain/interfaces/                                           │
 │  • IMarketDataProvider    • IPositionRepository                 │
 │  • IAccountDataProvider   • IPriceRepository                    │
 │  • ITradeRepository       • ICostRepository                     │
 │                                                                 │
-│  domain/trading_strategy.py                                     │
+│  domain/trading_strategy/core.py                                     │
 │  • calculate_moving_average()                                  │
 │  • generate_signal() → BUY/SELL/HOLD                           │
 │  • calculate_signal_strength()                                 │
 │                                                                 │
-│  domain/risk_manager.py                                         │
+│  domain/risk_manager/core.py                                         │
 │  • check_daily_limit()                                         │
 │  • check_trade_interval()                                      │
 │  • check_sell_protection()                                     │
 │  • check_buy_protection()                                      │
 │  • check_all_risks()                                           │
 │                                                                 │
-│  domain/position_manager.py                                     │
+│  domain/position_manager/core.py                                     │
 │  • calculate_buy_quantity()                                    │
 │  • calculate_sell_quantity()                                   │
 │  • calculate_new_average_cost()                                │

@@ -3,7 +3,7 @@ Risk management domain logic
 """
 from typing import Dict, Any
 import time
-import config
+from infrastructure.config.config import config
 
 
 class RiskManager:
