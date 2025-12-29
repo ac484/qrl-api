@@ -1,9 +1,43 @@
-# Cloud Build Configuration for Cloud Scheduler Jobs Deployment
-# 此文件用於自動化部署 Cloud Scheduler jobs
-# 使用 Cloud Build 進行 CI/CD 自動化
+# Cloud Build for qrl-api with Cloud Run deployment + Scheduler jobs
+substitutions:
+  _IMAGE_URI: "asia-southeast1-docker.pkg.dev/qrl-api/qrl-trading-api/qrl-trading-api:latest"
 
 steps:
-  # Step 1: 啟用必要的 API
+  # 1️⃣ Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_IMAGE_URI}'
+      - '.'
+
+  # 2️⃣ Push Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_IMAGE_URI}'
+
+  # 3️⃣ Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'qrl-trading-api'
+      - '--image=${_IMAGE_URI}'
+      - '--region=asia-southeast1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=10'
+      - '--concurrency=80'
+      - '--timeout=300s'
+      - '--cpu-boost'
+      - '--set-secrets=MEXC_API_KEY=mexc-api-key:latest,MEXC_SECRET_KEY=mexc-secret-key:latest,REDIS_URL=redis-url:latest'
+
+  # 4️⃣ Enable necessary APIs
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'enable-apis'
     args:
@@ -12,34 +46,37 @@ steps:
       - 'cloudscheduler.googleapis.com'
       - 'appengine.googleapis.com'
 
-  # Step 2: 檢查 App Engine 應用是否存在（Cloud Scheduler 需要）
+  # 5️⃣ Delete old Scheduler jobs (if exist)
   - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'check-appengine'
-    entrypoint: 'bash'
+    id: 'delete-01-min-job'
     args:
-      - '-c'
-      - |
-        if ! gcloud app describe &>/dev/null; then
-          echo "Creating App Engine app..."
-          gcloud app create --region=asia-southeast1
-        else
-          echo "App Engine app already exists"
-        fi
-
-  # Step 3: 刪除現有的 scheduler jobs（如果存在）
+      - 'scheduler'
+      - 'jobs'
+      - 'delete'
+      - '01-min-job'
+      - '--location=asia-southeast1'
+      - '--quiet'
   - name: 'gcr.io/cloud-builders/gcloud'
-    id: 'delete-existing-jobs'
-    entrypoint: 'bash'
+    id: 'delete-05-min-job'
     args:
-      - '-c'
-      - |
-        echo "Deleting existing scheduler jobs..."
-        gcloud scheduler jobs delete 01-min-job --location=asia-southeast1 --quiet || true
-        gcloud scheduler jobs delete 05-min-job --location=asia-southeast1 --quiet || true
-        gcloud scheduler jobs delete 15-min-job --location=asia-southeast1 --quiet || true
-        echo "Cleanup completed"
+      - 'scheduler'
+      - 'jobs'
+      - 'delete'
+      - '05-min-job'
+      - '--location=asia-southeast1'
+      - '--quiet'
+  - name: 'gcr.io/cloud-builders/gcloud'
+    id: 'delete-15-min-job'
+    args:
+      - 'scheduler'
+      - 'jobs'
+      - 'delete'
+      - '15-min-job'
+      - '--location=asia-southeast1'
+      - '--quiet'
 
-  # Step 4: 創建 Job 1 - 餘額同步（每分鐘）
+  # 6️⃣ Create Scheduler jobs
+  # Job 1 - Balance sync every minute
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'create-sync-balance-job'
     args:
@@ -49,10 +86,11 @@ steps:
       - 'http'
       - '01-min-job'
       - '--location=asia-southeast1'
-      - '--schedule=*/1 * * * *'
+      - '--schedule=* * * * *'
       - '--uri=https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/sync-balance'
       - '--http-method=POST'
-      - '--headers=X-CloudScheduler=true,Content-Type=application/json'
+      - '--headers=X-CloudScheduler=true'
+      - '--headers=Content-Type=application/json'
       - '--message-body={}'
       - '--time-zone=Asia/Taipei'
       - '--description=Sync MEXC account balance to Redis every 1 minute'
@@ -61,7 +99,7 @@ steps:
       - '--min-backoff-duration=5s'
       - '--max-backoff-duration=60s'
 
-  # Step 5: 創建 Job 2 - 價格更新（每 5 分鐘）
+  # Job 2 - Update price every 5 minutes
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'create-update-price-job'
     args:
@@ -74,7 +112,8 @@ steps:
       - '--schedule=*/5 * * * *'
       - '--uri=https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/update-price'
       - '--http-method=POST'
-      - '--headers=X-CloudScheduler=true,Content-Type=application/json'
+      - '--headers=X-CloudScheduler=true'
+      - '--headers=Content-Type=application/json'
       - '--message-body={}'
       - '--time-zone=Asia/Taipei'
       - '--description=Update QRL/USDT price from MEXC every 5 minutes'
@@ -83,7 +122,7 @@ steps:
       - '--min-backoff-duration=5s'
       - '--max-backoff-duration=60s'
 
-  # Step 6: 創建 Job 3 - 成本更新（每 15 分鐘）
+  # Job 3 - Update cost every 15 minutes
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'create-update-cost-job'
     args:
@@ -96,7 +135,8 @@ steps:
       - '--schedule=*/15 * * * *'
       - '--uri=https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/update-cost'
       - '--http-method=POST'
-      - '--headers=X-CloudScheduler=true,Content-Type=application/json'
+      - '--headers=X-CloudScheduler=true'
+      - '--headers=Content-Type=application/json'
       - '--message-body={}'
       - '--time-zone=Asia/Taipei'
       - '--description=Update cost and PnL calculations every 15 minutes'
@@ -105,7 +145,7 @@ steps:
       - '--min-backoff-duration=5s'
       - '--max-backoff-duration=60s'
 
-  # Step 7: 列出所有創建的 jobs 進行驗證
+  # 7️⃣ List jobs for verification
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'list-jobs'
     args:
@@ -114,7 +154,7 @@ steps:
       - 'list'
       - '--location=asia-southeast1'
 
-  # Step 8: 手動觸發每個 job 進行測試
+  # 8️⃣ Test trigger jobs
   - name: 'gcr.io/cloud-builders/gcloud'
     id: 'test-jobs'
     entrypoint: 'bash'
@@ -123,22 +163,17 @@ steps:
       - |
         echo "Waiting for Cloud Run to be ready..."
         sleep 30
-        echo "Testing scheduler jobs..."
-        echo "Triggering 01-min-job..."
+        echo "Triggering scheduler jobs..."
         gcloud scheduler jobs run 01-min-job --location=asia-southeast1 || true
         sleep 5
-        echo "Triggering 05-min-job..."
         gcloud scheduler jobs run 05-min-job --location=asia-southeast1 || true
         sleep 5
-        echo "Triggering 15-min-job..."
         gcloud scheduler jobs run 15-min-job --location=asia-southeast1 || true
         echo "All jobs triggered successfully"
 
-# 設置超時時間（15 分鐘）
-timeout: '900s'
+# Timeout for the entire build
+timeout: 1800s
 
-# 日誌選項
+# Logging options
 options:
   logging: CLOUD_LOGGING_ONLY
-
-# 替代變數（可在觸發時覆蓋）
