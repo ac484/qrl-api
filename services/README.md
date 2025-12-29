@@ -1,34 +1,50 @@
 services/
 └─ trading/
    ├─ __init__.py
-   ├─ trading_service.py        # 核心入口：协调交易流程，类似你现在的 TradingService 类
-   ├─ strategy_service.py       # 处理策略逻辑（MA crossover、成本判断等）
-   ├─ risk_service.py           # 风控逻辑（每日限制、仓位层、USDT余额检查）
-   ├─ position_service.py       # 仓位/数量计算，BUY/SELL 数量计算、仓位更新
-   ├─ repository_service.py     # 对 Redis/数据库的读写封装（position_repo, trade_repo, price_repo, cost_repo）
+
+   # ===== Orchestrator =====
+   ├─ trading_service.py              # 對外 Facade（HTTP / Job 呼叫）
+   ├─ trading_workflow.py             # 6-phase 流程（純流程）
+
+   # ===== Use Cases =====
+   ├─ execute_trade_usecase.py        # 自動交易一次
+   ├─ manual_trade_usecase.py         # 手動交易
+   ├─ bot_control_usecase.py          # start / stop / status
+
+   # ===== Domain Coordinators =====
+   ├─ balance_resolver.py             # 取得 USDT（API + cache fallback）
+   ├─ price_resolver.py               # current price + history 補齊
+   ├─ position_updater.py             # BUY / SELL 後 position 更新
+
+   # ===== Domain Services（已存在）=====
+   ├─ strategy_service.py
+   ├─ risk_service.py
+   ├─ position_service.py
+
+   # ===== Repository Facade =====
+   └─ repository_service.py            # 聚合 position / price / trade / cost
 
 services/
 └─ market/
    ├─ __init__.py
-   ├─ market_service.py        # 核心接口，對外暴露方法：get_ticker, get_current_price, get_klines...
-   ├─ cache_service.py         # 封裝緩存邏輯（Redis操作），統一管理TTL
-   ├─ price_repo_service.py    # 封裝價格倉庫操作（price_repo），提供歷史價格、統計、最新價格接口
-   ├─ mexc_client_service.py   # 封裝 MEXC API 調用，對外提供 get_ticker_24hr, get_orderbook, get_klines 等方法
 
+   # ===== Facade =====
+   ├─ market_service.py              # 對外唯一入口
 
-services\market\market_service.py
-services/market/
-├── data_service.py       # 抓行情、Kline、深度、歷史資料
-├── cache_service.py      # market_cache_service.py 可保留
-├── client_service.py     # mexc_client_service.py 可合併到這
-├── price_service.py      # price_repo_service.py 改名，負責價格計算、指標
-└── market_service.py     # 總控，調用上面各 service
+   # ===== Use Cases =====
+   ├─ get_market_snapshot.py         # ticker + price
+   ├─ get_orderbook_usecase.py
+   ├─ get_trades_usecase.py
+   ├─ get_klines_usecase.py
+   ├─ update_price_cache_usecase.py
 
-services\trading\trading_service.py
-services/trading/risk/
-├── __init__.py
-├── position_limit.py      # 持倉上限檢查
-├── pnl_limit.py           # 未實現損益檢查
-├── exposure_limit.py      # 整體風險敞口檢查
-├── leverage_check.py      # 槓桿檢查
-└── risk_service.py        # 總控，整合所有檢查
+   # ===== Domain Helpers =====
+   ├─ price_resolver.py              # current price / fallback
+   ├─ price_history_manager.py       # add / statistics
+   ├─ cache_strategy.py              # cache-first / ttl 決策
+
+   # ===== Infra Glue =====
+   ├─ mexc_client_service.py         # 封裝 mexc client
+   ├─ price_repo_service.py          # Redis price repo
+   ├─ cache_service.py               # Redis cache facade
+   └─ cache_policy.py                # TTL（已存在）

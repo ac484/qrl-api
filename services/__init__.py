@@ -17,6 +17,7 @@ from services.market import (
     PriceRepoService,
     MexcClientService,
 )
+from services.account import BalanceService
 
 __all__ = [
     "TradingService",
@@ -28,4 +29,5 @@ __all__ = [
     "CacheService",
     "PriceRepoService",
     "MexcClientService",
+    "BalanceService",
 ]

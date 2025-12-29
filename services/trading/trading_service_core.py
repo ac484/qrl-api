@@ -6,6 +6,11 @@ import logging
 from typing import Dict, Optional
 from datetime import datetime
 
+from services.trading.balance_resolver import BalanceResolver
+from services.trading.price_resolver import PriceResolver
+from services.trading.position_updater import PositionUpdater
+from services.trading.trading_workflow import TradingWorkflow
+
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +36,11 @@ class TradingService:
         cost_repo,
         trading_strategy,
         risk_manager,
-        position_manager
+        position_manager,
+        price_resolver: PriceResolver | None = None,
+        balance_resolver: BalanceResolver | None = None,
+        position_updater: PositionUpdater | None = None,
+        workflow: TradingWorkflow | None = None,
     ):
         self.mexc = mexc_client
         self.redis = redis_client
@@ -42,6 +51,22 @@ class TradingService:
         self.trading_strategy = trading_strategy
         self.risk_manager = risk_manager
         self.position_manager = position_manager
+
+        self.price_resolver = price_resolver or PriceResolver(self.mexc, self.price_repo)
+        self.balance_resolver = balance_resolver or BalanceResolver(self.mexc, self.redis)
+        self.position_updater = position_updater or PositionUpdater(self.cost_repo, self.position_repo)
+        self.workflow = workflow or TradingWorkflow(
+            price_resolver=self.price_resolver,
+            balance_resolver=self.balance_resolver,
+            position_updater=self.position_updater,
+            position_repo=self.position_repo,
+            price_repo=self.price_repo,
+            trade_repo=self.trade_repo,
+            cost_repo=self.cost_repo,
+            trading_strategy=self.trading_strategy,
+            risk_manager=self.risk_manager,
+            position_manager=self.position_manager,
+        )
     
     async def execute_trade_decision(self, symbol: str = "QRLUSDT") -> Dict:
         """
@@ -72,75 +97,17 @@ class TradingService:
                     "timestamp": datetime.now().isoformat()
                 }
             
-            # Phase 2: Get current price
-            price_data = await self.price_repo.get_latest_price(symbol)
-            if not price_data:
-                # Fetch from MEXC if not cached
-                async with self.mexc:
-                    ticker = await self.mexc.get_ticker_24hr(symbol)
-                    current_price = float(ticker.get("lastPrice", 0))
-                    await self.price_repo.set_latest_price(symbol, current_price)
-            else:
-                current_price = float(price_data)
-            
-            # Get price history for MA calculation
-            price_history = await self.price_repo.get_price_history(limit=60)
-            if not price_history or len(price_history) < 60:
-                # Fallback: synthesize history with current price to allow strategy execution
-                price_history = price_history or []
-                price_history = price_history + [{"price": current_price}] * (60 - len(price_history))
-            
-            # Phase 3: Generate signal (domain logic)
-            prices = [float(p.get('price', current_price)) for p in price_history]
-            short_prices = prices[-12:]  # Last 12 prices for short MA
-            long_prices = prices  # All 60 prices for long MA
-            
+
+            workflow_result = await self.workflow.execute(symbol)
+            if not workflow_result.get("success"):
+                return workflow_result
+            if workflow_result.get("action") == "HOLD":
+                return workflow_result
+
+            signal = workflow_result["action"]
+            quantity = workflow_result.get("quantity", 0)
+            current_price = workflow_result.get("price")
             position_data = await self.position_repo.get_position()
-            avg_cost = float(position_data.get("average_cost", 0)) if position_data else 0
-            
-            signal = self.trading_strategy.generate_signal(
-                price=current_price,
-                short_prices=short_prices,
-                long_prices=long_prices,
-                avg_cost=avg_cost
-            )
-            
-            if signal == "HOLD":
-                return {
-                    "success": True,
-                    "action": "HOLD",
-                    "reason": "No trading signal",
-                    "current_price": current_price,
-                    "timestamp": datetime.now().isoformat()
-                }
-            
-            # Phase 4: Risk controls (domain logic)
-            daily_trades = await self.trade_repo.get_daily_trades()
-            last_trade_time = await self.trade_repo.get_last_trade_time()
-            position_layers = await self.position_repo.get_position_layers()
-            
-            # Get account balance
-            async with self.mexc:
-                balance_data = await self.mexc.get_balance()
-                usdt_balance = float(balance_data.get("USDT", {}).get("free", 0))
-            
-            risk_check = self.risk_manager.check_all_risks(
-                signal=signal,
-                daily_trades=daily_trades,
-                last_trade_time=last_trade_time,
-                position_layers=position_layers,
-                usdt_balance=usdt_balance
-            )
-            
-            if not risk_check.get("passed", False):
-                return {
-                    "success": False,
-                    "action": signal,
-                    "reason": f"Risk check failed: {risk_check.get('reason')}",
-                    "current_price": current_price,
-                    "timestamp": datetime.now().isoformat()
-                }
-            
             # Phase 5: Calculate quantities (domain logic)
             if signal == "BUY":
                 quantity_result = self.position_manager.calculate_buy_quantity(
@@ -244,6 +211,10 @@ class TradingService:
                 "timestamp": datetime.now().isoformat()
             }
     
+
+
+
+
     async def get_trading_status(self) -> Dict:
         """Get comprehensive trading status"""
         try:
