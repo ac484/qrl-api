@@ -24,5 +24,5 @@ class AccountRepoMixin:
             return balances.get(asset, {"asset": asset, "free": "0", "locked": "0", "total": 0})
         return balances
 
-    async def get_balance_snapshot(self, symbol: str = "QRLUSDT") -> Dict[str, Any]:
-        return await fetch_balance_snapshot(self, symbol=symbol)
+    async def get_balance_snapshot(self) -> Dict[str, Any]:
+        return await fetch_balance_snapshot(self)

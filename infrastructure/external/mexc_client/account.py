@@ -1,16 +1,19 @@
 """
 Account and balance helpers extracted from MEXC client core.
 """
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from infrastructure.utils.type_safety import safe_float
+
+
+QRL_USDT_SYMBOL = "QRLUSDT"
 
 
 def build_balance_map(account_info: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
     balances: Dict[str, Dict[str, str]] = {}
     for balance in account_info.get("balances", []):
         asset = balance.get("asset")
-        if not asset:
+        if asset not in {"QRL", "USDT"}:
             continue
         balances[asset] = {
             "free": balance.get("free", "0"),
@@ -21,26 +24,26 @@ def build_balance_map(account_info: Dict[str, Any]) -> Dict[str, Dict[str, str]]
     return balances
 
 
-async def fetch_balance_snapshot(client: "MEXCClient", symbol: str = "QRLUSDT") -> Dict[str, Any]:
-    """Fetch balances with accompanying price data."""
+async def fetch_balance_snapshot(client: "MEXCClient") -> Dict[str, Any]:
+    """Fetch QRL/USDT spot balances with accompanying price data."""
     account_info = await client.get_account_info()
-    ticker = await client.get_ticker_price(symbol)
+    ticker = await client.get_ticker_price(QRL_USDT_SYMBOL)
+    if ticker.get("price") is None:
+        raise ValueError("Missing QRL/USDT price from exchange")
+
     price = safe_float(ticker.get("price"))
     balances = build_balance_map(account_info)
 
-    qrl_balance = balances.get("QRL", {"free": "0", "locked": "0", "total": 0})
-    usdt_balance = balances.get("USDT", {"free": "0", "locked": "0", "total": 0})
-
-    qrl_total = safe_float(qrl_balance.get("total", 0))
-    qrl_value_usdt = qrl_total * price
+    qrl_balance = balances.get("QRL") or {"free": "0", "locked": "0", "total": 0}
+    usdt_balance = balances.get("USDT") or {"free": "0", "locked": "0", "total": 0}
 
     return {
         "balances": {
-            "QRL": {**qrl_balance, "price": price, "value_usdt": qrl_value_usdt},
+            "QRL": {**qrl_balance, "price": price},
             "USDT": usdt_balance,
         },
+        "prices": {QRL_USDT_SYMBOL: price},
         "raw": account_info,
-        "price": {symbol: price},
     }
 
 __all__ = ["build_balance_map", "fetch_balance_snapshot"]

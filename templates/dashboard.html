@@ -160,6 +160,11 @@
         async function loadBalances() {
             try {
                 const res = await fetch('/account/balance');
+                if (res.status === 503) {
+                    setText('qrl-total', 'NEED API KEY', 'var(--warning)');
+                    setText('usdt-total', 'NEED API KEY', 'var(--warning)');
+                    return;
+                }
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 const balances = data.balances || {};
@@ -290,6 +295,10 @@
             const body = document.getElementById('kline-body');
             try {
                 const res = await fetch('/market/klines/QRLUSDT?interval=1m&limit=5');
+                if (res.status === 404) {
+                    body.innerHTML = '<tr><td colspan="5" class="hint">僅支援 QRLUSDT</td></tr>';
+                    return;
+                }
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 const klines = data.data || [];
@@ -310,6 +319,10 @@
             const body = document.getElementById('orders-body');
             try {
                 const res = await fetch('/account/orders');
+                if (res.status === 503) {
+                    body.innerHTML = '<tr><td colspan="6" class="hint">需要 API key 才能讀取</td></tr>';
+                    return;
+                }
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 const orders = data.orders || [];

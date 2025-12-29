@@ -5,6 +5,7 @@ from datetime import datetime
 import logging
 from typing import Any, Dict, Optional
 
+from infrastructure.external.mexc_client.account import QRL_USDT_SYMBOL
 from infrastructure.utils.type_safety import safe_float
 
 logger = logging.getLogger(__name__)
@@ -18,15 +19,19 @@ class BalanceService:
         self.redis = redis_client
         self.cache_ttl = cache_ttl
 
+    def _has_credentials(self) -> bool:
+        if not hasattr(self.mexc, "api_key"):
+            return True
+        return bool(getattr(self.mexc, "api_key", None) and getattr(self.mexc, "secret_key", None))
+
     async def _cache_snapshot(self, snapshot: Dict[str, Any]) -> None:
         if not self.redis:
             return
         try:
             await self.redis.set_cached_account_balance(snapshot, ttl=self.cache_ttl)
             await self.redis.set_mexc_account_balance(snapshot.get("balances", {}))
-            qrl = snapshot.get("balances", {}).get("QRL", {})
-            price = safe_float(qrl.get("price"))
-            if price:
+            price = snapshot.get("prices", {}).get(QRL_USDT_SYMBOL)
+            if price is not None:
                 await self.redis.set_mexc_qrl_price(price)
         except Exception as exc:  # pragma: no cover - best-effort caching
             logger.debug(f"Skipping balance cache write: {exc}")
@@ -45,10 +50,25 @@ class BalanceService:
             return cached_response
         return None
 
-    async def get_account_balance(self, symbol: str = "QRLUSDT") -> Dict[str, Any]:
+    @staticmethod
+    def _assert_required_fields(snapshot: Dict[str, Any]) -> None:
+        balances = snapshot.get("balances", {})
+        if "QRL" not in balances or "USDT" not in balances:
+            raise ValueError("Missing QRL/USDT balances")
+        if snapshot.get("prices", {}).get(QRL_USDT_SYMBOL) is None:
+            raise ValueError("Missing QRL/USDT price")
+
+    async def get_account_balance(self) -> Dict[str, Any]:
+        if not self._has_credentials():
+            cached = await self._cached_response(ValueError("MEXC API credentials required"))
+            if cached:
+                return cached
+            raise ValueError("MEXC API credentials required")
+
         try:
             async with self.mexc:
-                snapshot = await self.mexc.get_balance_snapshot(symbol)
+                snapshot = await self.mexc.get_balance_snapshot()
+            self._assert_required_fields(snapshot)
             await self._cache_snapshot(snapshot)
             snapshot.update(
                 {
@@ -69,8 +89,15 @@ class BalanceService:
     def to_usd_values(snapshot: Dict[str, Any]) -> Dict[str, Any]:
         """Simple helper to enrich balances with USD values."""
         qrl = snapshot.get("balances", {}).get("QRL", {})
-        price = safe_float(qrl.get("price"))
+        price_entry = snapshot.get("prices", {}).get(QRL_USDT_SYMBOL)
+        raw_price = price_entry if price_entry is not None else qrl.get("price")
+        if raw_price is None:
+            raise ValueError("QRL/USDT price required for valuation")
+
+        price = safe_float(raw_price)
         qrl_total = safe_float(qrl.get("total", 0))
+        snapshot["balances"].setdefault("QRL", {})
+        snapshot["balances"]["QRL"].setdefault("price", price)
         snapshot["balances"]["QRL"].update(
             {
                 "value_usdt": qrl_total * price,

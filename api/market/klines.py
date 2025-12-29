@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 
+from infrastructure.external.mexc_client.account import QRL_USDT_SYMBOL
+
 router = APIRouter(prefix="/market", tags=["Market Data"])
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,9 @@ async def get_klines(
 ):
     """Get candlestick (kline) data."""
     from infrastructure.external import mexc_client
+
+    if symbol != QRL_USDT_SYMBOL:
+        raise HTTPException(status_code=404, detail="Only QRLUSDT is supported")
 
     try:
         async with mexc_client:
