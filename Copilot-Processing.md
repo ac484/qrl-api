@@ -1,1 +1,1 @@
-User request: Implement QRL spot balance display showing value = quantity * QRL/USDT price; keep dashboard.html simple and delegate computation to Python.
+User request: 查找README.md 然後按照README.md 在不影響運行情況下按照各README.md開始拆分讓專案清晰

@@ -1,18 +1,21 @@
 infrastructure/
-│
-├─ bot/                          # 核心交易逻辑
+├─ bot/                          # 核心交易逻辑（六阶段流程、指标计算）
 │   ├─ __init__.py
 │   ├─ bot_core.py               # TradingBot 六阶段核心逻辑
-│   └─ bot_utils.py              # 辅助函数（MA计算、PnL计算等）
+│   └─ bot_utils.py              # 辅助函数（MA 计算、PnL 计算等）
 │
 ├─ config/                       # 配置
 │   ├─ __init__.py
-│   └─ config.py                 # 全局配置（API key, 参数等）
+│   └─ config.py                 # 全局配置（API key、环境参数等）
 │
-├─ external/                     # 第三方或外部服务客户端
-│   ├─ __init__.py
-│   ├─ mexc_client.py            # MEXC API 客户端
-│   └─ redis_client.py           # Redis 客户端
+├─ external/                     # 第三方 / 外部服务客户端
+│   ├─ __init__.py               # 统一导出 mexc_client、redis_client
+│   ├─ mexc_client/              # MEXC API 客户端（重命名后的目录）
+│   │   ├─ __init__.py
+│   │   └─ client.py             # 原 mexc_client.py
+│   └─ redis_client/             # Redis 客户端（重命名后的目录）
+│       ├─ __init__.py
+│       └─ client.py             # 原 redis_client.py
 │
 ├─ tasks/                        # Cloud Scheduler / FastAPI 任务
 │   ├─ __init__.py
@@ -29,24 +32,5 @@ infrastructure/
 ├─ bot.py                        # 交易入口文件（实例化 TradingBot）
 └─ cloud_tasks.py                # Cloud Tasks / FastAPI 入口文件
 
-
-
-infrastructure/
-├─ external/                   # 外部服务客户端总入口
-│   ├─ __init__.py
-│   ├─ mexc_client/            # MEXC API 客户端
-│   │   ├─ __init__.py
-│   │   └─ client.py           # 原来的 mexc_client.py
-│   └─ redis_client/           # Redis 客户端
-│       ├─ __init__.py
-│       └─ client.py           # 原来的 redis_client.py
-
-infrastructure/
-└─ utils/
-   ├─ __init__.py
-   ├─ decorators.py       # handle_redis_errors, handle_api_errors, log_execution
-   ├─ redis_keys.py       # RedisKeyBuilder
-   ├─ redis_manager.py    # RedisDataManager (JSON/Hash/SortedSet helpers)
-   ├─ metadata.py         # create_metadata
-   ├─ validators.py       # validate_symbol
-   └─ converters.py       # safe_float, safe_int
+# 额外的 utils（架构说明档中提到）
+# 如 decorators、redis_keys、redis_manager 等，落位于 infrastructure/utils/ 下，可按需扩展。
