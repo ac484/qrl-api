@@ -16,50 +16,50 @@
 
 ### REST – Public & Market Data
 - [GET /api/v3/ping](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#test-connectivity) – Test connectivity.
-- [GET /api/v3/time](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#check-server-time) – Server time.
-- [GET /api/v3/exchangeInfo](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#exchange-information) – Symbols and rules.
+- [GET /api/v3/time](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#check-server-time) – Server time (returns `serverTime`).
+- [GET /api/v3/exchangeInfo](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#exchange-information) – Symbols and rules (see response schema on anchor).
 - [GET /api/v3/defaultSymbols](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#default-symbols) – Default trading pairs.
-- [GET /api/v3/symbol/offline](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#offline-symbols) – Suspended/delisted symbols.
-- [GET /api/v3/depth](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#order-book) – Order book.
-- [GET /api/v3/trades](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#recent-trades-list) – Recent trades.
-- [GET /api/v3/historicalTrades](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#old-trade-lookup) – Older trades.
-- [GET /api/v3/aggTrades](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#compressedaggregate-trades-list) – Aggregate trades.
-- [GET /api/v3/klines](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#klinecandlestick-data) – Candles.
-- [GET /api/v3/ticker/24hr](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#24hr-ticker-price-change-statistics) – 24h stats.
-- [GET /api/v3/ticker/price](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#symbol-price-ticker) – Last price.
-- [GET /api/v3/ticker/bookTicker](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#symbol-order-book-ticker) – Best bid/ask.
+- [GET /api/v3/symbol/offline](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#offline-symbols) – Suspended/delisted symbols (returns array of symbols).
+- [GET /api/v3/depth](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#order-book) – Order book (bids/asks arrays with `price`/`qty`).
+- [GET /api/v3/trades](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#recent-trades-list) – Recent trades (id/price/qty/time flags).
+- [GET /api/v3/historicalTrades](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#old-trade-lookup) – Older trades (same format as recent).
+- [GET /api/v3/aggTrades](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#compressedaggregate-trades-list) – Aggregate trades (`a/f/l/p/q/T/m/M`).
+- [GET /api/v3/klines](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#klinecandlestick-data) – Candles (`[openTime, open, high, low, close, volume, closeTime, quoteVolume]`).
+- [GET /api/v3/ticker/24hr](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#24hr-ticker-price-change-statistics) – 24h stats (priceChange/percent/volume etc.).
+- [GET /api/v3/ticker/price](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#symbol-price-ticker) – Last price (`symbol/price`).
+- [GET /api/v3/ticker/bookTicker](https://www.mexc.com/api-docs/spot-v3/market-data-endpoints#symbol-order-book-ticker) – Best bid/ask (`bidPrice/bidQty/askPrice/askQty`).
 
 ### REST – Account & Trade (signed)
-- [POST /api/v3/order/test](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#test-new-order-trade) – Validate order params.
-- [POST /api/v3/order](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#new-order--trade) – Place order.
-- [GET /api/v3/order](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#query-order-trade) – Query order.
-- [DELETE /api/v3/order](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#cancel-order-trade) – Cancel order.
-- [GET /api/v3/openOrders](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#current-open-orders-user_data) – Open orders.
-- [DELETE /api/v3/openOrders](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#cancel-open-orders-trade) – Cancel open orders.
-- [GET /api/v3/allOrders](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#all-orders-user_data) – All orders.
-- [GET /api/v3/myTrades](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#account-trade-list-user_data) – Account trades.
-- [GET /api/v3/account](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#account-information-user_data) – Balances and permissions.
+- [POST /api/v3/order/test](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#test-new-order-trade) – Validate order params (returns empty on success).
+- [POST /api/v3/order](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#new-order--trade) – Place order (orderId/clientOrderId/status fields).
+- [GET /api/v3/order](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#query-order-trade) – Query order (status, fills, times).
+- [DELETE /api/v3/order](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#cancel-order-trade) – Cancel order (returns cancelled order info).
+- [GET /api/v3/openOrders](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#current-open-orders-user_data) – Open orders (array of order objects).
+- [DELETE /api/v3/openOrders](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#cancel-open-orders-trade) – Cancel open orders (per symbol).
+- [GET /api/v3/allOrders](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#all-orders-user_data) – All orders (historical list).
+- [GET /api/v3/myTrades](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#account-trade-list-user_data) – Account trades (tradeId/price/qty/commission flags).
+- [GET /api/v3/account](https://www.mexc.com/api-docs/spot-v3/spot-account-trade#account-information-user_data) – Balances and permissions (balances array with free/locked).
 
 ### REST – Wallet (signed)
-- [GET /api/v3/capital/config/getall](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#user-coin-information-user_data) – Coin list.
-- [POST /api/v3/capital/deposit/address](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#generate-deposit-address-user_data) – Deposit address.
-- [GET /api/v3/capital/deposit/hisrec](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#deposit-history-user_data) – Deposit history.
-- [POST /api/v3/capital/withdraw](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#withdraw-user_data) – Withdraw.
+- [GET /api/v3/capital/config/getall](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#user-coin-information-user_data) – Coin list (networks, withdraw/deposit status, limits).
+- [POST /api/v3/capital/deposit/address](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#generate-deposit-address-user_data) – Deposit address (returns address/tag per chain).
+- [GET /api/v3/capital/deposit/hisrec](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#deposit-history-user_data) – Deposit history (txId/amount/network/status/time).
+- [POST /api/v3/capital/withdraw](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#withdraw-user_data) – Withdraw (returns withdrawId/status).
 - [DELETE /api/v3/capital/withdraw](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#withdraw-cancel-user_data) – Cancel withdraw.
-- [GET /api/v3/capital/withdraw/history](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#withdraw-history-user_data) – Withdraw history.
+- [GET /api/v3/capital/withdraw/history](https://www.mexc.com/api-docs/spot-v3/wallet-endpoints#withdraw-history-user_data) – Withdraw history (address/amount/txId/status/time).
 
 ### REST – Sub-Account (signed)
-- [POST /api/v3/sub-account/virtualSubAccount](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#create-virtual-sub-account) – Create virtual sub-account.
-- [GET /api/v3/sub-account/list](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#query-virtual-sub-account) – List sub-accounts.
-- [POST /api/v3/sub-account/apiKey](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#create-api-key) – Create API key.
-- [GET /api/v3/sub-account/apiKey](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#query-api-key) – Query API key.
+- [POST /api/v3/sub-account/virtualSubAccount](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#create-virtual-sub-account) – Create virtual sub-account (returns subAccount).
+- [GET /api/v3/sub-account/list](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#query-virtual-sub-account) – List sub-accounts (array with uid/status/createTime).
+- [POST /api/v3/sub-account/apiKey](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#create-api-key) – Create API key (returns key/permissions).
+- [GET /api/v3/sub-account/apiKey](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#query-api-key) – Query API key (list keys for sub-account).
 - [DELETE /api/v3/sub-account/apiKey](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#delete-api-key) – Delete API key.
-- [POST /api/v3/capital/sub-account/universalTransfer](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#sub-account-universal-transfer) – Universal transfer.
+- [POST /api/v3/capital/sub-account/universalTransfer](https://www.mexc.com/api-docs/spot-v3/subaccount-endpoints#sub-account-universal-transfer) – Universal transfer (returns transferId/status).
 
 ### REST – Rebate (signed)
-- [GET /api/v3/rebate/history](https://www.mexc.com/api-docs/spot-v3/rebate-endpoints#get-rebate-history-records) – Rebate summary.
-- [GET /api/v3/rebate/records/detail](https://www.mexc.com/api-docs/spot-v3/rebate-endpoints#get-rebate-records-detail) – Invitee rebate detail.
-- [GET /api/v3/rebate/self-records/detail](https://www.mexc.com/api-docs/spot-v3/rebate-endpoints#get-self-rebate-records-detail) – Self rebate detail.
+- [GET /api/v3/rebate/history](https://www.mexc.com/api-docs/spot-v3/rebate-endpoints#get-rebate-history-records) – Rebate summary (totals by invitees).
+- [GET /api/v3/rebate/records/detail](https://www.mexc.com/api-docs/spot-v3/rebate-endpoints#get-rebate-records-detail) – Invitee rebate detail (per order, fee, rebate amount).
+- [GET /api/v3/rebate/self-records/detail](https://www.mexc.com/api-docs/spot-v3/rebate-endpoints#get-self-rebate-records-detail) – Self rebate detail (own rebates).
 
 ### User Data Stream (listen key)
 - [POST /api/v3/userDataStream](https://www.mexc.com/api-docs/spot-v3/websocket-user-data-streams#generate-listen-key) – Generate listen key.
