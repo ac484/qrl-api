@@ -23,6 +23,8 @@ async def get_account_balance():
         async with mexc_client:
             # Get account info from MEXC
             account_info = await mexc_client.get_account_info()
+            price_data = (await mexc_client.get_ticker_price("QRLUSDT")) or {}
+            qrl_price = float(price_data.get("price", 0))
             
             # Extract balances
             balances = account_info.get("balances", [])
@@ -40,6 +42,9 @@ async def get_account_balance():
             # Calculate totals
             qrl_total = float(qrl_balance.get("free", 0)) + float(qrl_balance.get("locked", 0))
             usdt_total = float(usdt_balance.get("free", 0)) + float(usdt_balance.get("locked", 0))
+
+            qrl_value_usdt = qrl_total * qrl_price
+            qrl_free_value_usdt = float(qrl_balance.get("free", 0)) * qrl_price
             
             logger.info(
                 f"Account balance fetched - QRL: {qrl_total:.2f}, USDT: {usdt_total:.2f}"
@@ -52,7 +57,10 @@ async def get_account_balance():
                     "QRL": {
                         "free": qrl_balance.get("free"),
                         "locked": qrl_balance.get("locked"),
-                        "total": qrl_total
+                        "total": qrl_total,
+                        "price": qrl_price,
+                        "value_usdt": qrl_value_usdt,
+                        "value_usdt_free": qrl_free_value_usdt
                     },
                     "USDT": {
                         "free": usdt_balance.get("free"),
@@ -62,6 +70,9 @@ async def get_account_balance():
                 },
                 "account_type": account_info.get("accountType"),
                 "can_trade": account_info.get("canTrade"),
+                "prices": {
+                    "QRLUSDT": qrl_price
+                },
                 "timestamp": datetime.now().isoformat()
             }
     

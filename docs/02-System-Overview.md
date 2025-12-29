@@ -8,7 +8,7 @@
 - **Redis**：雙層存儲  
   - 永久層（無 TTL）：最新價格、倉位、成本、原始 MEXC 回應  
   - 快取層（短 TTL）：對外 API 查詢用的價格快取
-- **Cloud Scheduler / Cloud Run**：定期觸發 `update-price`、`sync-balance`、`update-cost`。
+- **Cloud Scheduler / Cloud Run**：定期觸發 `05-min-job`、`01-min-job`、`15-min-job`。
 
 ### 資料流（簡化）
 ```
@@ -34,7 +34,7 @@ Position / Cost 計算 → 只用永久層資料
 - `/market/price/{symbol}`：市場價格（使用快取層，失效回退）。  
 - `/account/balance`：實時餘額（直連 MEXC）。  
 - `/status`：機器人狀態、倉位、成本、層級。  
-- `/tasks/update-price` / `/tasks/sync-balance` / `/tasks/update-cost`：Cloud Task 目標。
+- `/tasks/05-min-job` / `/tasks/01-min-job` / `/tasks/15-min-job`：Cloud Task 目標。
 
 ### 核心保護原則
 1. **資料一致性**：真實餘額用 API；分析用 Redis；不要混用。  

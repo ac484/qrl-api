@@ -63,15 +63,15 @@ gcloud run services add-iam-policy-binding qrl-api --region=asia-southeast1 \
   --member="serviceAccount:scheduler-sa@YOUR_PROJECT.iam.gserviceaccount.com" \
   --role="roles/run.invoker"
 
-gcloud scheduler jobs create http sync-balance --location=asia-southeast1 \
+gcloud scheduler jobs create http 01-min-job --location=asia-southeast1 \
   --schedule="*/3 * * * *" \
-  --uri="${SERVICE_URL}/tasks/sync-balance" \
+  --uri="${SERVICE_URL}/tasks/01-min-job" \
   --http-method=POST \
   --oidc-service-account-email="scheduler-sa@YOUR_PROJECT.iam.gserviceaccount.com" \
   --oidc-token-audience="${SERVICE_URL}" \
   --headers="Content-Type=application/json" \
   --message-body='{}'
-# 依樣建立 update-price (每分鐘) / update-cost (每 5 分鐘)
+# 依樣建立 05-min-job (每分鐘) / 15-min-job (每 5 分鐘)
 ```
 
 ### Redis 選項

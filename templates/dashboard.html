@@ -57,6 +57,7 @@
             <div class="card">
                 <h2>QRL 餘額 (現貨)</h2>
                 <div class="value" id="qrl-total">--</div>
+                <div class="row hint"><span>價值 (USDT)</span><span id="qrl-value">--</span></div>
                 <div class="row hint"><span>可用</span><span id="qrl-free">--</span></div>
             </div>
             <div class="card">
@@ -164,14 +165,18 @@
                 const balances = data.balances || {};
                 const qrl = balances.QRL || { free: '0', locked: '0' };
                 const usdt = balances.USDT || { free: '0', locked: '0' };
-                const qrlFree = parseFloat(qrl.free || '0');
-                const qrlLocked = parseFloat(qrl.locked || '0');
-                const usdtFree = parseFloat(usdt.free || '0');
-                const usdtLocked = parseFloat(usdt.locked || '0');
-                setText('qrl-total', formatNumber(qrlFree + qrlLocked));
+                const qrlFree = parseFloat(qrl.free ?? '0');
+                const qrlLocked = parseFloat(qrl.locked ?? '0');
+                const qrlTotal = parseFloat(qrl.total ?? (qrlFree + qrlLocked));
+                const qrlValue = parseFloat(qrl.value_usdt ?? '0');
+                const usdtFree = parseFloat(usdt.free ?? '0');
+                const usdtLocked = parseFloat(usdt.locked ?? '0');
+                const usdtTotal = parseFloat(usdt.total ?? (usdtFree + usdtLocked));
+                setText('qrl-total', formatNumber(qrlTotal));
+                setText('qrl-value', formatNumber(qrlValue, 2));
                 setText('qrl-free', formatNumber(qrlFree));
                 setText('qrl-locked', formatNumber(qrlLocked));
-                setText('usdt-total', formatNumber(usdtFree + usdtLocked, 2));
+                setText('usdt-total', formatNumber(usdtTotal, 2));
                 setText('usdt-free', formatNumber(usdtFree, 2));
                 setText('usdt-locked', formatNumber(usdtLocked, 2));
             } catch (err) {
