@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/tasks", tags=["Cloud Tasks"])
 
 
-@router.post("/sync-balance")
+@router.post("/01-min-job")
 async def task_sync_balance(
     x_cloudscheduler: str = Header(None, alias="X-CloudScheduler"),
     authorization: str = Header(None)
@@ -90,7 +90,7 @@ async def task_sync_balance(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/update-price")
+@router.post("/05-min-job")
 async def task_update_price(
     x_cloudscheduler: str = Header(None, alias="X-CloudScheduler"),
     authorization: str = Header(None)
@@ -147,7 +147,7 @@ async def task_update_price(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/update-cost")
+@router.post("/15-min-job")
 async def task_update_cost(
     x_cloudscheduler: str = Header(None, alias="X-CloudScheduler"),
     authorization: str = Header(None)
