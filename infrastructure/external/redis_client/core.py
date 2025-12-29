@@ -11,11 +11,12 @@ import redis.asyncio as redis
 
 from infrastructure.config.config import config
 from infrastructure.utils.utils import handle_redis_errors, RedisKeyBuilder
+from infrastructure.external.redis_client.balance_cache import BalanceCacheMixin
 
 logger = logging.getLogger(__name__)
 
 
-class RedisClient:
+class RedisClient(BalanceCacheMixin):
     """Redis client for trading bot state management (Async)"""
     
     def __init__(self):
@@ -515,151 +516,7 @@ class RedisClient:
             logger.error(f"Failed to get MEXC raw response for {endpoint}: {e}")
             return None
     
-    async def set_mexc_account_balance(self, balance_data: Dict[str, Any]) -> bool:
-        """
-        Store processed MEXC account balance data (permanent storage)
-        
-        Args:
-            balance_data: Processed balance information with QRL and USDT
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            key = "mexc:account_balance"
-            
-            # Add metadata
-            data_with_meta = {
-                "balances": balance_data,
-                "timestamp": datetime.now().isoformat(),
-                "stored_at": int(datetime.now().timestamp() * 1000)
-            }
-            
-            # Store permanently (no expiration)
-            await self.client.set(key, json.dumps(data_with_meta))
-            logger.info("Stored MEXC account balance data")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to store MEXC account balance: {e}")
-            return False
-    
-    async def get_mexc_account_balance(self) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve MEXC account balance data
-        
-        Returns:
-            Optional[Dict]: Balance data with metadata, or None if not found
-        """
-        try:
-            key = "mexc:account_balance"
-            data = await self.client.get(key)
-            if data:
-                return json.loads(data)
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get MEXC account balance: {e}")
-            return None
-    
-    async def set_mexc_qrl_price(self, price: float, price_data: Optional[Dict[str, Any]] = None) -> bool:
-        """
-        Store QRL price data (permanent storage)
-        
-        Args:
-            price: Current QRL price in USDT
-            price_data: Optional additional price data from API
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            key = "mexc:qrl_price"
-            
-            # Prepare data
-            data = {
-                "price": str(price),
-                "price_float": price,
-                "timestamp": datetime.now().isoformat(),
-                "stored_at": int(datetime.now().timestamp() * 1000)
-            }
-            
-            # Add additional price data if provided
-            if price_data:
-                data["raw_data"] = price_data
-            
-            # Store permanently (no expiration)
-            await self.client.set(key, json.dumps(data))
-            logger.info(f"Stored QRL price: {price} USDT")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to store QRL price: {e}")
-            return False
-    
-    async def get_mexc_qrl_price(self) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve QRL price data
-        
-        Returns:
-            Optional[Dict]: Price data with metadata, or None if not found
-        """
-        try:
-            key = "mexc:qrl_price"
-            data = await self.client.get(key)
-            if data:
-                return json.loads(data)
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get QRL price: {e}")
-            return None
-    
-    async def set_mexc_total_value(self, total_value_usdt: float, breakdown: Dict[str, Any]) -> bool:
-        """
-        Store total account value in USDT (permanent storage)
-        
-        Args:
-            total_value_usdt: Total value in USDT
-            breakdown: Breakdown of value calculation (QRL value, USDT balance, etc.)
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            key = "mexc:total_value"
-            
-            # Prepare data
-            data = {
-                "total_value_usdt": str(total_value_usdt),
-                "total_value_float": total_value_usdt,
-                "breakdown": breakdown,
-                "timestamp": datetime.now().isoformat(),
-                "stored_at": int(datetime.now().timestamp() * 1000)
-            }
-            
-            # Store permanently (no expiration)
-            await self.client.set(key, json.dumps(data))
-            logger.info(f"Stored total account value: {total_value_usdt} USDT")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to store total value: {e}")
-            return False
-    
-    async def get_mexc_total_value(self) -> Optional[Dict[str, Any]]:
-        """
-        Retrieve total account value data
-        
-        Returns:
-            Optional[Dict]: Total value data with breakdown, or None if not found
-        """
-        try:
-            key = "mexc:total_value"
-            data = await self.client.get(key)
-            if data:
-                return json.loads(data)
-            return None
-        except Exception as e:
-            logger.error(f"Failed to get total value: {e}")
-            return None
-    
-    # ===== Market Data Caching Methods =====
+# ===== Market Data Caching Methods =====
     
     async def set_ticker_24hr(self, symbol: str, ticker_data: Dict[str, Any]) -> bool:
         """

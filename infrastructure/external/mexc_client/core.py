@@ -14,6 +14,7 @@ from urllib.parse import urlencode
 import httpx
 
 from infrastructure.config.config import config
+from infrastructure.external.mexc_client.account import build_balance_map, fetch_balance_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +301,19 @@ class MEXCClient:
             return {"asset": asset, "free": "0", "locked": "0"}
         
         return account_info
-    
+
+    async def get_balance(self, asset: Optional[str] = None) -> Dict[str, Any]:
+        """Get balances as a simple asset map."""
+        account_info = await self.get_account_info()
+        balances = build_balance_map(account_info)
+        if asset:
+            return balances.get(asset, {"asset": asset, "free": "0", "locked": "0", "total": 0})
+        return balances
+
+    async def get_balance_snapshot(self, symbol: str = "QRLUSDT") -> Dict[str, Any]:
+        """Get balances with current price snapshot for caching."""
+        return await fetch_balance_snapshot(self, symbol=symbol)
+
     # ===== Trading Endpoints (Authenticated) =====
     
     async def create_order(

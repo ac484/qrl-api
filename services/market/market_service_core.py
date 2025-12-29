@@ -6,6 +6,8 @@ import logging
 from typing import Dict, Optional, List
 from datetime import datetime
 
+from .cache_policy import kline_ttl
+
 logger = logging.getLogger(__name__)
 
 
@@ -177,15 +179,7 @@ class MarketService:
         """
         try:
             # Determine cache TTL based on interval
-            ttl_map = {
-                "1m": 60,
-                "5m": 300,
-                "15m": 900,
-                "1h": 3600,
-                "4h": 14400,
-                "1d": 86400
-            }
-            ttl = ttl_map.get(interval, 60)
+            ttl = kline_ttl(interval)
             
             # Try cache first
             cached = await self.redis.get_klines(symbol, interval)

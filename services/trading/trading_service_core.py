@@ -119,10 +119,21 @@ class TradingService:
             last_trade_time = await self.trade_repo.get_last_trade_time()
             position_layers = await self.position_repo.get_position_layers()
             
-            # Get account balance
-            async with self.mexc:
-                balance_data = await self.mexc.get_balance()
+            # Get account balance with cache fallback for stability
+            usdt_balance = 0.0
+            try:
+                async with self.mexc:
+                    balance_data = await self.mexc.get_balance()
                 usdt_balance = float(balance_data.get("USDT", {}).get("free", 0))
+            except Exception:
+                logger.warning("Primary balance fetch failed, attempting cache fallback")
+            
+            if usdt_balance <= 0 and hasattr(self.redis, "get_cached_account_balance"):
+                cached_balance = await self.redis.get_cached_account_balance()
+                if cached_balance:
+                    usdt_balance = float(
+                        cached_balance.get("balances", {}).get("USDT", {}).get("free", 0)
+                    )
             
             risk_check = self.risk_manager.check_all_risks(
                 signal=signal,
