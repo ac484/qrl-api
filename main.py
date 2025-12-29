@@ -14,9 +14,13 @@ from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from config import config
-from mexc_client import mexc_client
-from redis_client import redis_client
+from infrastructure.config.config import config
+from infrastructure.external.mexc_client.client import mexc_client
+from infrastructure.external.redis_client.client import redis_client
+from repositories.market.price_repository import PriceRepository
+from repositories.trade.trade_repository import TradeRepository
+from services.market.market_service import MarketService
+from services.trading.trading_service import TradingService
 
 # Configure logging
 logging.basicConfig(
@@ -93,10 +97,21 @@ app.add_middleware(
 
 # Setup templates and static files
 templates = Jinja2Templates(directory="templates")
+
+# Structured layer singletons
+price_repository = PriceRepository(redis_client)
+trade_repository = TradeRepository(redis_client)
+market_service = MarketService(price_repository, mexc_client)
+trading_service = TradingService(
+    mexc_client=mexc_client,
+    redis_client=redis_client,
+    trade_repository=trade_repository,
+    price_repository=price_repository,
+)
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Include Cloud Tasks router
-from cloud_tasks import router as cloud_tasks_router
+from infrastructure.tasks.mexc_tasks import router as cloud_tasks_router
 app.include_router(cloud_tasks_router)
 
 
@@ -287,20 +302,10 @@ async def execute_trading(request: ExecuteRequest, background_tasks: BackgroundT
             timestamp=datetime.now().isoformat()
         )
     
-    # Import bot module to execute trading
-    from bot import TradingBot
-    
-    bot = TradingBot(
-        mexc_client=mexc_client,
-        redis_client=redis_client,
-        symbol=config.TRADING_SYMBOL,
-        dry_run=request.dry_run
-    )
-    
-    # Execute trading cycle
+    # Execute trading cycle via service layer
     try:
-        result = await bot.execute_cycle()
-        
+        result = await trading_service.execute(dry_run=request.dry_run)
+
         return ExecuteResponse(
             success=result.get("success", False),
             action=result.get("action"),
@@ -308,7 +313,7 @@ async def execute_trading(request: ExecuteRequest, background_tasks: BackgroundT
             details=result,
             timestamp=datetime.now().isoformat()
         )
-    
+
     except Exception as e:
         logger.error(f"Trading execution failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Trading execution failed: {str(e)}")
@@ -318,31 +323,7 @@ async def execute_trading(request: ExecuteRequest, background_tasks: BackgroundT
 async def get_ticker(symbol: str):
     """Get market ticker for a symbol"""
     try:
-        # Try to get from cache first
-        if redis_client.connected:
-            cached_ticker = await redis_client.get_ticker_24hr(symbol)
-            if cached_ticker:
-                logger.debug(f"Retrieved ticker from cache for {symbol}")
-                return {
-                    "symbol": symbol,
-                    "data": cached_ticker,
-                    "timestamp": cached_ticker.get("cached_at"),
-                    "cached": True
-                }
-        
-        # Fetch from MEXC API if not cached
-        ticker = await mexc_client.get_ticker_24hr(symbol)
-        
-        # Cache the result
-        if redis_client.connected:
-            await redis_client.set_ticker_24hr(symbol, ticker)
-        
-        return {
-            "symbol": symbol,
-            "data": ticker,
-            "timestamp": datetime.now().isoformat(),
-            "cached": False
-        }
+        return await market_service.get_ticker(symbol)
     except Exception as e:
         logger.error(f"Failed to get ticker for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get ticker: {str(e)}")
@@ -352,19 +333,7 @@ async def get_ticker(symbol: str):
 async def get_price(symbol: str):
     """Get current price for a symbol"""
     try:
-        price_data = await mexc_client.get_ticker_price(symbol)
-        
-        # Cache in Redis if connected
-        if redis_client.connected and symbol == config.TRADING_SYMBOL:
-            price = float(price_data.get("price", 0))
-            await redis_client.set_latest_price(price)
-            await redis_client.add_price_to_history(price)
-        
-        return {
-            "symbol": symbol,
-            "price": price_data.get("price"),
-            "timestamp": datetime.now().isoformat()
-        }
+        return await market_service.get_price(symbol)
     except Exception as e:
         logger.error(f"Failed to get price for {symbol}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to get price: {str(e)}")
