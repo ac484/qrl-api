@@ -1,1 +1,1 @@
-User request: Fix QRL/USDT balance and value display; stabilize read-only orders load.
+User request: Add all MEXC v3 API method links into docs/MEXC_v3.md.
