@@ -50,13 +50,16 @@ class MexcConnection:
         payload = params or {}
         last_error: Optional[Exception] = None
         normalized_method = method.upper()
+        request_kwargs = (
+            {"params": payload}
+            if normalized_method in {"GET", "DELETE"}
+            else {"json": payload}
+        )
 
         for attempt in range(max_retries):
             try:
                 client = await self._ensure_client()
-                response = await client.request(
-                    normalized_method, url, params=payload
-                )
+                response = await client.request(normalized_method, url, **request_kwargs)
                 response.raise_for_status()
                 return response.json()
             except httpx.HTTPStatusError as exc:

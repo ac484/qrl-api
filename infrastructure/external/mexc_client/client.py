@@ -23,10 +23,9 @@ logger = logging.getLogger(__name__)
 class MEXCClient(
     AccountEndpoints,
     MarketEndpoints,
-    OrderEndpoints,
     SubAccountEndpoints,
-    UserStreamMixin,
     TradingHelpersMixin,
+    UserStreamMixin,
 ):
     """Async MEXC client composed from endpoint mixins."""
 

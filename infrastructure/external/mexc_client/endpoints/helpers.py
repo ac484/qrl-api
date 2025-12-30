@@ -1,6 +1,8 @@
 """Helper mixins for user streams and convenience methods."""
 from typing import Any, Dict, List, Optional
 
+from .order import OrderEndpoints
+
 
 class UserStreamMixin:
     async def create_listen_key(self) -> Dict[str, Any]:
@@ -26,7 +28,7 @@ class UserStreamMixin:
         )
 
 
-class TradingHelpersMixin:
+class TradingHelpersMixin(OrderEndpoints):
     async def place_market_order(
         self,
         symbol: str,

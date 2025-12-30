@@ -7,6 +7,8 @@ from urllib.parse import urlencode
 
 def generate_signature(secret_key: str, params: Dict[str, Any]) -> str:
     """Generate HMAC SHA256 signature with sorted params."""
+    if not secret_key:
+        raise ValueError("Secret key required for signature generation")
     query_string = urlencode(sorted(params.items()))
     return hmac.new(
         secret_key.encode("utf-8"),
