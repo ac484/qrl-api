@@ -1,10 +1,19 @@
 import asyncio
 import json
+import sys
+from pathlib import Path
+
+import importlib
 
 import pytest
 from google.protobuf.struct_pb2 import Struct
 
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 from infrastructure.external.mexc_client import ws_client
+ws_core = importlib.import_module("infrastructure.external.mexc_client.ws_core")
 
 
 class FakeWebSocket:
@@ -34,7 +43,7 @@ async def test_client_subscribe_and_handle_ping(monkeypatch):
     async def fake_connect(*args, **kwargs):
         return fake_ws
 
-    monkeypatch.setattr(ws_client.websockets, "connect", fake_connect)
+    monkeypatch.setattr(ws_core.websockets, "connect", fake_connect)
 
     async with ws_client.MEXCWebSocketClient(
         subscriptions=["chan"], heartbeat=None
@@ -55,7 +64,7 @@ async def test_client_unsubscribe(monkeypatch):
     async def fake_connect(*args, **kwargs):
         return fake_ws
 
-    monkeypatch.setattr(ws_client.websockets, "connect", fake_connect)
+    monkeypatch.setattr(ws_core.websockets, "connect", fake_connect)
 
     async with ws_client.MEXCWebSocketClient(
         subscriptions=["spot@public.bookTicker"], heartbeat=None
@@ -76,7 +85,7 @@ async def test_binary_decoder(monkeypatch):
     async def fake_connect(*args, **kwargs):
         return fake_ws
 
-    monkeypatch.setattr(ws_client.websockets, "connect", fake_connect)
+    monkeypatch.setattr(ws_core.websockets, "connect", fake_connect)
 
     async with ws_client.MEXCWebSocketClient(
         binary_decoder=lambda raw: {"decoded": raw.decode()}, heartbeat=None
