@@ -44,3 +44,26 @@ async def test_place_market_order_requires_quantity(monkeypatch):
 
     with pytest.raises(ValueError):
         await client.place_market_order(symbol="QRLUSDT", side="buy")
+
+
+@pytest.mark.asyncio
+async def test_listen_key_helpers_call_expected_endpoints(monkeypatch):
+    client = MEXCClient(api_key="dummy_key", secret_key="dummy_secret")
+    calls = []
+
+    async def fake_request(method, endpoint, params=None, signed=False, max_retries=3):
+        calls.append((method, endpoint, params, signed, max_retries))
+        return {"ok": True}
+
+    monkeypatch.setattr(client, "_request", fake_request)
+
+    await client.create_listen_key()
+    await client.keepalive_listen_key("abc")
+    await client.get_listen_keys()
+    await client.close_listen_key("abc")
+
+    assert calls[0][:2] == ("POST", "/api/v3/userDataStream")
+    assert calls[1][:3] == ("PUT", "/api/v3/userDataStream", {"listenKey": "abc"})
+    assert calls[2][:2] == ("GET", "/api/v3/userDataStream")
+    assert calls[3][:3] == ("DELETE", "/api/v3/userDataStream", {"listenKey": "abc"})
+    assert all(call[3] for call in calls)

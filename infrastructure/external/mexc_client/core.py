@@ -168,6 +168,26 @@ class MEXCClient(
     
     # ===== Account Endpoints (Authenticated) =====
 
+    async def create_listen_key(self) -> Dict[str, Any]:
+        """Generate a listen key for user data streams."""
+        return await self._request("POST", "/api/v3/userDataStream", signed=True)
+
+    async def keepalive_listen_key(self, listen_key: str) -> Dict[str, Any]:
+        """Extend listen key validity (recommended every 30 minutes)."""
+        return await self._request(
+            "PUT", "/api/v3/userDataStream", params={"listenKey": listen_key}, signed=True
+        )
+
+    async def get_listen_keys(self) -> Dict[str, Any]:
+        """Fetch valid listen keys for the current API key."""
+        return await self._request("GET", "/api/v3/userDataStream", signed=True)
+
+    async def close_listen_key(self, listen_key: str) -> Dict[str, Any]:
+        """Close a listen key explicitly."""
+        return await self._request(
+            "DELETE", "/api/v3/userDataStream", params={"listenKey": listen_key}, signed=True
+        )
+
     async def place_market_order(
         self,
         symbol: str,
