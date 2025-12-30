@@ -3,7 +3,10 @@ import logging
 from typing import Optional
 
 import redis.asyncio as redis
-from redis.connection import HiredisParser  # optional, available when hiredis is installed
+try:
+    from redis.connection import HiredisParser  # optional, available when hiredis is installed
+except ImportError:  # hiredis 2.x removed parser, fall back to default
+    HiredisParser = None
 
 from infrastructure.config.config import config
 from infrastructure.external.redis_client.balance_cache import BalanceCacheMixin
@@ -39,6 +42,7 @@ class RedisClient(
 
     async def connect(self) -> bool:
         try:
+            parser_kwargs = {"parser_class": HiredisParser} if HiredisParser else {}
             if config.REDIS_URL:
                 self.pool = redis.ConnectionPool.from_url(
                     config.REDIS_URL,
@@ -47,7 +51,7 @@ class RedisClient(
                     socket_connect_timeout=5,
                     socket_timeout=5,
                     health_check_interval=30,
-                    parser_class=HiredisParser,
+                    **parser_kwargs,
                 )
                 logger.info(f"Created Redis connection pool using REDIS_URL")
             else:
@@ -61,7 +65,7 @@ class RedisClient(
                     socket_connect_timeout=5,
                     socket_timeout=5,
                     health_check_interval=30,
-                    parser_class=HiredisParser,
+                    **parser_kwargs,
                 )
                 logger.info(f"Created Redis connection pool at {config.REDIS_HOST}:{config.REDIS_PORT}")
             

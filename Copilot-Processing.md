@@ -1,1 +1,2 @@
-User request: Implement websocket features per docs/websocket-1.md and docs/websocket-2.md; ensure dependencies in requirements.txt; reference MEXC websocket docs for market and user data. Repo: 7Spade/qrl-api.
+User request: Implement mexc v3 API architecture and layering per provided plan, with minimal changes, using sequential thinking and reporting progress. Ensure files and structure match specified layout, keep files under 4000 characters, and follow repo rules.
+Progress: Restructured mexc_client into layered packages and rebased to align with remote changes.
