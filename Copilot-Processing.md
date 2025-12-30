@@ -1,2 +1,1 @@
-User request: Implement mexc v3 API architecture and layering per provided plan, with minimal changes, using sequential thinking and reporting progress. Ensure files and structure match specified layout, keep files under 4000 characters, and follow repo rules.
-Progress: Restructured mexc_client into layered packages and rebased to align with remote changes.
+User request: 根據 infrastructure/external/redis_client/README.md 對 redis 結構化，確保功能正常，使用 MCP 工具（Sequential Thinking → Software Planning Tool → Context7），全程使用 Sequential Thinking 進行相依分析與遷移優先排序，單一檔案不可超過 4000 字元，實施前須規劃清楚。
