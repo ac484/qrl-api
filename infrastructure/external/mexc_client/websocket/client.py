@@ -60,7 +60,7 @@ class MEXCWebSocketClient:
             raise RuntimeError("WebSocket connection is not open")
         message = {"method": method}
         if params is not None:
-            message["params"] = list(params or [])
+            message["params"] = list(params)
         await self._ws.send(json.dumps(message))
 
     async def subscribe(self, channels):
