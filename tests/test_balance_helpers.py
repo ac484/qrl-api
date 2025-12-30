@@ -76,3 +76,15 @@ async def test_balance_service_cache_fallback():
     result = await service.get_account_balance()
     assert result["source"] == "cache"
     assert result["balances"]["USDT"]["free"] == "5"
+
+
+def test_to_usd_values_no_price():
+    snapshot = {
+        "balances": {
+            "QRL": {"free": "0", "locked": "0", "total": 0},
+            "USDT": {"free": "0", "locked": "0", "total": 0},
+        },
+        "prices": {},
+    }
+    out = BalanceService.to_usd_values(snapshot)
+    assert out["balances"]["QRL"]["total"] == 0

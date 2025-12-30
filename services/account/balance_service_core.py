@@ -55,8 +55,8 @@ class BalanceService:
         balances = snapshot.setdefault("balances", {})
         balances.setdefault("QRL", {"free": "0", "locked": "0", "total": 0})
         balances.setdefault("USDT", {"free": "0", "locked": "0", "total": 0})
-        if snapshot.get("prices", {}).get(QRL_USDT_SYMBOL) is None:
-            raise ValueError("Missing QRL/USDT price")
+        prices = snapshot.setdefault("prices", {})
+        prices.setdefault(QRL_USDT_SYMBOL, 0)
 
     async def get_account_balance(self) -> Dict[str, Any]:
         if not self._has_credentials():
@@ -92,7 +92,7 @@ class BalanceService:
         price_entry = snapshot.get("prices", {}).get(QRL_USDT_SYMBOL)
         raw_price = price_entry if price_entry is not None else qrl.get("price")
         if raw_price is None:
-            raise ValueError("QRL/USDT price required for valuation")
+            return snapshot
 
         price = safe_float(raw_price)
         qrl_total = safe_float(qrl.get("total", 0))
