@@ -1,13 +1,8 @@
 """
 Minimal MEXC WebSocket helpers (Occam-friendly).
 
-Provides two entrypoints:
 - connect_user_stream: create listenKey then subscribe to private channels.
 - connect_public_trades: subscribe to aggregated public trades for a symbol.
-
-Usage example:
-    async for msg in connect_public_trades("BTCUSDT"):
-        print(msg)
 """
 from __future__ import annotations
 

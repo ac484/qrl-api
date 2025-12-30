@@ -29,4 +29,4 @@ Sample payload shapes (abridged)
 
 Minimal flow
 1) Open WS → 2) SUBSCRIPTION for required channels → 3) Decode proto payloads → 4) Handle reconnect + ping when idle → 5) UNSUBSCRIPTION when done.
-- Minimal client helper: `infrastructure/external/mexc_ws_client.py` (`connect_public_trades`)
+- Minimal client helper: `infrastructure/external/mexc_client/ws_client.py` (`connect_public_trades`)
