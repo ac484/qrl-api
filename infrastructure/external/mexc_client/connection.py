@@ -52,7 +52,7 @@ class MexcConnection:
         normalized_method = method.upper()
         request_kwargs = (
             {"params": payload}
-            if normalized_method in {"GET", "DELETE"}
+            if normalized_method in {"GET", "DELETE", "PUT"}
             else {"json": payload}
         )
 

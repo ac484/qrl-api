@@ -19,8 +19,8 @@ class MEXCWebSocketClient:
         url=WS_BASE,
         subscriptions=None,
         binary_decoder=None,
-        heartbeat: int = 20,
-        close_timeout: int = 5,
+        heartbeat: float = 20,
+        close_timeout: float = 5,
     ):
         self.url = url
         self._pending = set(subscriptions or [])
