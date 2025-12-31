@@ -12,11 +12,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from src.app.infrastructure.external.mexc import ws_client  # noqa: E402
-
-ws_core = importlib.import_module(
-    "infrastructure.external.mexc_client.ws_core"
-)  # noqa: E402
+from src.app.infrastructure.external.mexc.ws import ws_client  # noqa: E402
+from src.app.infrastructure.external.mexc.ws import ws_core  # noqa: E402
 
 
 class FakeWebSocket:

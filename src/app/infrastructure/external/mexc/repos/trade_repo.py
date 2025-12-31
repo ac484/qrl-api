@@ -55,3 +55,9 @@ class TradeRepoMixin:
         return await self._request(
             "GET", "/api/v3/allOrders", params=params, signed=True
         )
+
+
+# Backward-compatible alias expected by package exports
+TradeRepository = TradeRepoMixin
+
+__all__ = ["TradeRepoMixin", "TradeRepository"]

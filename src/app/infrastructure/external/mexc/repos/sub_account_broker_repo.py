@@ -47,3 +47,9 @@ class SubAccountBrokerRepoMixin:
         return await self._request(
             "POST", "/api/v3/broker/sub-account/apiKey", params=params, signed=True
         )
+
+
+# Backward-compatible alias expected by package exports
+SubAccountBrokerRepository = SubAccountBrokerRepoMixin
+
+__all__ = ["SubAccountBrokerRepoMixin", "SubAccountBrokerRepository"]

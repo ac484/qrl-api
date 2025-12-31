@@ -68,3 +68,9 @@ class SubAccountSpotRepoMixin:
         return await self._request(
             "DELETE", "/api/v3/sub-account/apiKey", params=params, signed=True
         )
+
+
+# Backward-compatible alias expected by package exports
+SubAccountSpotRepository = SubAccountSpotRepoMixin
+
+__all__ = ["SubAccountSpotRepoMixin", "SubAccountSpotRepository"]

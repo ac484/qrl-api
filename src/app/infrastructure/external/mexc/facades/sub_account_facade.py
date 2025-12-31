@@ -26,3 +26,9 @@ class SubAccountFacadeMixin:
             "Spot API does not support querying sub-account balance from main account. "
             "You must use the sub-account's own API key to query its balance."
         )
+
+
+# Backward-compatible alias expected by package exports
+SubAccountFacade = SubAccountFacadeMixin
+
+__all__ = ["SubAccountFacadeMixin", "SubAccountFacade"]
