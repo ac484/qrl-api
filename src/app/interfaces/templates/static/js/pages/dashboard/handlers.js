@@ -1,4 +1,4 @@
-import { startAutoRefresh, refreshAll } from "../../refresh.js";
+import { refreshAll } from "../../refresh.js";
 import { setText } from "../../shared/time.js";
 
 const WS_BASE = "wss://wbs-api.mexc.com/ws";
@@ -84,7 +84,6 @@ export function setupDashboard() {
         refreshBtn.addEventListener("click", refreshAll);
     }
     refreshAll();
-    startAutoRefresh();
     startWebsocket();
 }
 

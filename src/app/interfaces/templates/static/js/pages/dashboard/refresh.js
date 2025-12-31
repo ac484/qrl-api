@@ -1,1 +1,1 @@
-export { refreshAll, startAutoRefresh } from "../../refresh.js";
+export { refreshAll } from "../../refresh.js";

@@ -21,8 +21,3 @@ export async function refreshAll() {
         loadTrades(),
     ]);
 }
-
-export function startAutoRefresh(interval = 30000) {
-    refreshAll();
-    setInterval(refreshAll, interval);
-}
