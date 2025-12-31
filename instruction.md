@@ -1,6 +1,5 @@
 gcloud scheduler jobs create http 01-min-job --schedule="*/1 * * * *" --uri="https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/01-min-job" --http-method=POST --headers="X-CloudScheduler=true,Content-Type=application/json" --time-zone="Asia/Taipei" --description="01-min-job"
 
-
 gcloud scheduler jobs create http 05-min-job --schedule="*/5 * * * *" --uri="https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/05-min-job" --http-method=POST --headers="X-CloudScheduler=true,Content-Type=application/json" --time-zone="Asia/Taipei" --description="Sync MEXC account balance to Redis every 5 minute"
 
 gcloud scheduler jobs create http 15-min-job --schedule="*/15 * * * *" --uri="https://qrl-trading-api-545492969490.asia-southeast1.run.app/tasks/15-min-job" --http-method=POST --headers="X-CloudScheduler=true,Content-Type=application/json" --time-zone="Asia/Taipei" --description="Update QRL/USDT price every 15 minutes"
