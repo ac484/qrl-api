@@ -9,6 +9,14 @@ For example, when using the encrypted WebSocket protocol: wss://wbs-api.mexc.com
 A single connection is only valid for 24 hours; expect to be disconnected at the 24 hour mark.
 Each UID can apply for a maximum of 60 listen keys (excluding invalid listen keys).
 Each listen key maximum support 5 websocket connection (which means each uid can applies for a maximum of 60 listen keys and 300 ws links).
+
+## Web 視覺化套件建議
+
+- **帳戶淨值／餘額走勢**：`lightweight-charts` 或 `chart.js + chartjs-adapter-luxon` 可以即時繪製餘額、保證金、PnL 的時間序列。
+- **資產分佈與費用分析**：`apache-echarts` 提供 pie/bar 報表，可用於資產佔比、手續費累計、成交量對比。
+- **表格與即時狀態**：若需要同步展示訂單、成交明細，可搭配 `@tanstack/table-core` 或任何前端表格元件，chart 只負責視覺化。
+- **在瀏覽器解 protobuf**：前端若直接連 `*.api.pb` channel，可安裝 `protobufjs` 並引入官方 proto schema；如由後端轉 JSON，確保 Python 端已安裝 `protobuf`（`requirements.txt` 中已固定版本）後再將資料推送到前端。
+
 Listen Key
 Generate Listen Key
 Response
