@@ -1,1 +1,1 @@
-User request: Integrate protobuf message handling for websocket proto definitions located in src/app/infrastructure/external/proto/websocket-proto/*.proto with protobuf==4.25.1 already in requirements. Main.py already imports google.protobuf.message and json_format. Need to apply proto definitions accordingly.
+User request: Analyze project gaps using Sequential-Thinking, plan with Software-Planning-Tool. When production success rate <95%, use Context7 get-library-docs and resolve-library-id. Follow repo instructions to implement requirements.
