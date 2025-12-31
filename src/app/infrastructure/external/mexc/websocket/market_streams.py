@@ -8,6 +8,10 @@ from typing import Any, Callable, Type
 from google.protobuf.json_format import MessageToDict
 from google.protobuf.message import Message
 
+from src.app.infrastructure.external.proto.websocket_pb import (
+    PushDataV3ApiWrapper_pb2,
+)
+
 BinaryDecoder = Callable[[bytes], Any]
 
 _TRADE_INTERVALS = {"100ms", "10ms"}
@@ -37,6 +41,11 @@ def build_protobuf_decoder(message_cls: Type[Message]) -> BinaryDecoder:
         return MessageToDict(message, preserving_proto_field_name=True)
 
     return _decoder
+
+
+decode_push_data = build_protobuf_decoder(
+    PushDataV3ApiWrapper_pb2.PushDataV3ApiWrapper
+)
 
 
 def trade_stream(symbol: str, interval: str = "100ms") -> str:
@@ -84,6 +93,7 @@ def mini_ticker_stream(symbol: str, timezone: str = "UTC+0") -> str:
 __all__ = [
     "BinaryDecoder",
     "build_protobuf_decoder",
+    "decode_push_data",
     "trade_stream",
     "kline_stream",
     "diff_depth_stream",

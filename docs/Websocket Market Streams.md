@@ -85,7 +85,8 @@ Python
 
 #Parsing example:
 
-import PushDataV3ApiWrapper_pb2
+from src.app.infrastructure.external.proto.websocket_pb import PushDataV3ApiWrapper_pb2
+from src.app.infrastructure.external.mexc.websocket.market_streams import decode_push_data
 
 # Assemble the object
 pushData = PushDataV3ApiWrapper_pb2.PushDataV3ApiWrapper()
@@ -95,10 +96,8 @@ pushData.symbol = 'BTCUSDT'
 # Serialize to a string
 serializedData = pushData.SerializeToString()
 
-# Deserialize into a PushDataV3ApiWrapper object
-result = PushDataV3ApiWrapper_pb2.PushDataV3ApiWrapper()
-result.ParseFromString(serializedData)
-print(result)
+# Deserialize into a Python dict using the shared decoder
+print(decode_push_data(serializedData))
 
 Subscribe to a Data Stream
 Subscription Channel Response

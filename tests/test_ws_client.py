@@ -138,3 +138,31 @@ def test_user_data_stream_builders():
     ]
     # Legacy import path continues to work
     assert ws_channels.account_update_stream() == "spot@private.account.v3.api.pb"
+
+
+def test_push_data_decoder_builds_from_generated_proto():
+    from src.app.infrastructure.external.proto.websocket_pb import (
+        PublicAggreDealsV3Api_pb2,
+        PushDataV3ApiWrapper_pb2,
+    )
+
+    decoder = ws_client.decode_push_data
+    payload = PushDataV3ApiWrapper_pb2.PushDataV3ApiWrapper(
+        channel="spot@public.aggre.deals.v3.api.pb@100ms@BTCUSDT",
+        publicAggreDeals=PublicAggreDealsV3Api_pb2.PublicAggreDealsV3Api(
+            deals=[
+                PublicAggreDealsV3Api_pb2.PublicAggreDealsV3ApiItem(
+                    price="1.1", quantity="2.2", tradeType=1, time=123
+                )
+            ],
+            eventType="aggTrade",
+        ),
+        symbol="BTCUSDT",
+        sendTime=999,
+    )
+
+    decoded = decoder(payload.SerializeToString())
+
+    assert decoded["channel"] == payload.channel
+    assert decoded["publicAggreDeals"]["eventType"] == "aggTrade"
+    assert decoded["publicAggreDeals"]["deals"][0]["price"] == "1.1"

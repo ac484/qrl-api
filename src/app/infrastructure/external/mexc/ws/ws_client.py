@@ -22,6 +22,7 @@ from src.app.infrastructure.external.mexc.websocket.market_streams import (
     mini_ticker_stream,
     partial_depth_stream,
     trade_stream,
+    decode_push_data,
 )
 from src.app.infrastructure.external.mexc.ws_core import MEXCWebSocketClient, WS_BASE
 
@@ -101,4 +102,5 @@ __all__ = [
     "mini_tickers_stream",
     "mini_ticker_stream",
     "build_protobuf_decoder",
+    "decode_push_data",
 ]
