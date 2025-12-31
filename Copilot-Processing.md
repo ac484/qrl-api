@@ -1,4 +1,6 @@
-User request: Analyze repo configs to optimize performance or reduce Cloud Run resource usage; example: remove 30s auto-refresh.
-Repo: 7Spade/qrl-api
-Task: Identify and implement minimal changes to improve efficiency per problem statement.
-1. User request: Verify Supabase infrastructure completion, review implementation against standards, confirm usability. Apply minimal changes under Occam's Razor, avoid speculative refactors or new deps. Use sequential-thinking and software planning tool; keep files under 4000 characters.
+User request:
+- Use Context7 to query and improve GitHub Copilot agent tasks (passive/auto enhancement) and apply useful configuration to project.
+- Remove manual configs under .github* that Copilot agent tasks do not read (manual entries).
+- Use Sequential-Thinking for analysis and Software-Planning-Tool for implementation plan.
+
+Instructions: follow repo rules, minimal changes, use planning tool, report_progress steps, prefer custom agents if available.

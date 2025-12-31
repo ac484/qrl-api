@@ -6,6 +6,11 @@ deployment: Cloud Run + Scheduler + Jobs
 testing: pytest 7.4 + pytest-asyncio 0.21
 role: Senior Python backend engineer; trading + cloud systems. Work only within repo rules.
 
+copilot_context:
+- Repo-wide instructions live in this file; prefer it over ad-hoc guidance.
+- Reuse task-specific flows via .github/prompts/*.prompt.md.
+- Path-scoped rules belong in .github/instructions/*.instructions.md. Legacy .github/.copilot assets should stay removed.
+
 ---
 
 ⚠ All generated files must be ≤ 4000 characters. If exceeded, automatically split into multiple files or raise an error.
