@@ -1,6 +1,1 @@
-User request:
-- Use Context7 to query and improve GitHub Copilot agent tasks (passive/auto enhancement) and apply useful configuration to project.
-- Remove manual configs under .github* that Copilot agent tasks do not read (manual entries).
-- Use Sequential-Thinking for analysis and Software-Planning-Tool for implementation plan.
-
-Instructions: follow repo rules, minimal changes, use planning tool, report_progress steps, prefer custom agents if available.
+User request: 使用 Context7 查詢mexc v3 api 分析如何實施，docs\Websocket Market Streams.md，docs\Websocket User Data Streams.md，使用 Sequential-Thinking 方法分析專案並利用Software-Planning-Tool規劃工具制定實施計畫；當生產把握率低於99.99%時，使用 Context7 的 get-library-docs 與 resolve-library-id。
