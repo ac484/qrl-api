@@ -15,7 +15,7 @@ Each listen key maximum support 5 websocket connection (which means each uid can
 - **帳戶淨值／餘額走勢**：`lightweight-charts` 或 `chart.js + chartjs-adapter-luxon` 可以即時繪製餘額、保證金、PnL 的時間序列。
 - **資產分佈與費用分析**：`apache-echarts` 提供 pie/bar 報表，可用於資產佔比、手續費累計、成交量對比。
 - **表格與即時狀態**：若需要同步展示訂單、成交明細，可搭配 `@tanstack/react-table`（React）或 `@tanstack/table-core` 搭配 UI 套件（例如 MUI/AntD 的 Table 元件）；chart 只負責視覺化。
-- **在瀏覽器解 protobuf**：前端若直接連 `*.api.pb` channel，可安裝 `protobufjs@7.x` 並引入官方 proto schema（來源：https://github.com/mexcdevelop/websocket-proto）；確認版本支援 proto3 且與後端生成的 schema 保持一致。
+- **在瀏覽器解 protobuf**：前端若直接連 `*.api.pb` channel，可安裝 `protobufjs@7.2.5` 並引入官方 proto schema（來源：https://github.com/mexcdevelop/websocket-proto）；確認版本支援 proto3 且與後端生成的 schema 保持一致。
 - **後端轉 JSON 再推送**：如由後端轉 JSON，再將資料推到前端表格／圖表前，確保 Python 端已安裝 `protobuf`（`requirements.txt` 中已固定版本 `protobuf==4.25.1`）。
 
 Listen Key
