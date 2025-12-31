@@ -99,6 +99,10 @@ serializedData = pushData.SerializeToString()
 # Deserialize into a Python dict using the shared decoder
 print(decode_push_data(serializedData))
 
+Note: the websocket helper `connect_public_trades` (and other protobuf channels)
+now defaults to using `decode_push_data` as its binary decoder, so passing
+`binary_decoder` is optional unless you need custom parsing logic.
+
 Subscribe to a Data Stream
 Subscription Channel Response
 

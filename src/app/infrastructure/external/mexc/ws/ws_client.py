@@ -38,7 +38,7 @@ async def _keepalive_listen_key(
 async def connect_public_trades(
     symbol: str,
     interval: str = "100ms",
-    binary_decoder: Optional[BinaryDecoder] = None,
+    binary_decoder: Optional[BinaryDecoder] = decode_push_data,
 ) -> AsyncIterator[Any]:
     channel = trade_stream(symbol, interval)
     async with MEXCWebSocketClient(
@@ -52,7 +52,7 @@ async def connect_user_stream(
     mexc_client: Optional[MEXCClient] = None,
     channels: Optional[Iterable[str]] = None,
     listen_key: Optional[str] = None,
-    binary_decoder: Optional[BinaryDecoder] = None,
+    binary_decoder: Optional[BinaryDecoder] = decode_push_data,
     keepalive_interval: Optional[int] = 25 * 60,
     close_listen_key_on_exit: bool = False,
 ) -> AsyncIterator[Any]:

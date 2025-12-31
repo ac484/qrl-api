@@ -6,7 +6,7 @@
 
 ## Summary
 
-Added generated Python protobuf bindings for MEXC websocket payloads, exposed a shared decoder for PushData envelopes, and documented how to consume the compiled messages in the websocket client flow and docs.
+Added generated Python protobuf bindings for MEXC websocket payloads, exposed a shared decoder for PushData envelopes, documented how to consume the compiled messages in the websocket client flow and docs, and defaulted websocket helpers to the shared decoder.
 
 ## Changes
 
@@ -19,9 +19,9 @@ Added generated Python protobuf bindings for MEXC websocket payloads, exposed a 
 ### Modified
 
 - src/app/infrastructure/external/mexc/websocket/market_streams.py - Added decode_push_data helper using generated PushData message
-- src/app/infrastructure/external/mexc/ws/ws_client.py - Re-exported decode_push_data for websocket clients
-- tests/test_ws_client.py - Covered decoding with generated PushData protobuf bindings
-- docs/Websocket Market Streams.md - Documented python import path and shared decoder usage
+- src/app/infrastructure/external/mexc/ws/ws_client.py - Re-exported decode_push_data for websocket clients and defaulted binary decoding to PushData wrapper
+- tests/test_ws_client.py - Covered decoding with generated PushData protobuf bindings and default decoder usage
+- docs/Websocket Market Streams.md - Documented python import path, shared decoder usage, and default decoder behaviour
 
 ### Removed
 
@@ -55,9 +55,9 @@ Added generated Python protobuf bindings for MEXC websocket payloads, exposed a 
 ### Files Modified (4)
 
 - src/app/infrastructure/external/mexc/websocket/market_streams.py - Added push-data decoder
-- src/app/infrastructure/external/mexc/ws/ws_client.py - Re-exported decoder helper
-- tests/test_ws_client.py - Added protobuf decoding test
-- docs/Websocket Market Streams.md - Updated usage instructions
+- src/app/infrastructure/external/mexc/ws/ws_client.py - Re-exported decoder helper and defaulted binary decoding to PushData wrapper
+- tests/test_ws_client.py - Added protobuf decoding test and coverage for default decoder usage
+- docs/Websocket Market Streams.md - Updated usage instructions and default decoder note
 
 ### Files Removed (0)
 
@@ -72,4 +72,4 @@ Added generated Python protobuf bindings for MEXC websocket payloads, exposed a 
 
 ### Deployment Notes
 
-No runtime configuration changes required; websocket clients can pass `decode_push_data` as the binary decoder to parse protobuf frames.
+No runtime configuration changes required; websocket clients can rely on the default `decode_push_data` binary decoder to parse protobuf frames.
