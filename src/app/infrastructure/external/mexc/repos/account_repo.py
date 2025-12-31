@@ -31,3 +31,9 @@ class AccountRepoMixin:
 
     async def get_balance_snapshot(self) -> Dict[str, Any]:
         return await fetch_balance_snapshot(self)
+
+
+# Backward-compatible alias expected by package exports
+AccountRepository = AccountRepoMixin
+
+__all__ = ["AccountRepoMixin", "AccountRepository"]

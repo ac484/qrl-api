@@ -9,4 +9,7 @@ class MexcRequestError(Exception):
     """Raised for transport-level request failures."""
 
 
-__all__ = ["MexcAPIError", "MexcRequestError"]
+# Backward-compatible alias expected by legacy imports
+MEXCAPIException = MexcAPIError
+
+__all__ = ["MexcAPIError", "MexcRequestError", "MEXCAPIException"]

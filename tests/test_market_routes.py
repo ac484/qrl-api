@@ -6,7 +6,7 @@ import pytest
 # Ensure project root is on sys.path for module imports
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from api import market_routes
+from src.app.interfaces.http import market as market_routes
 
 
 class DummyMexcClient:
@@ -36,9 +36,9 @@ class DummyMexcClient:
 @pytest.mark.asyncio
 async def test_get_ticker_uses_shared_client(monkeypatch):
     dummy_client = DummyMexcClient()
-    monkeypatch.setattr("infrastructure.external.mexc_client", dummy_client)
+    monkeypatch.setattr(market_routes, "_get_mexc_client", lambda: dummy_client)
 
-    result = await market_routes.get_ticker("QRLUSDT")
+    result = await market_routes.ticker_endpoint("QRLUSDT")
 
     assert result["data"]["symbol"] == "QRLUSDT"
     assert dummy_client.ticker_called is True
@@ -47,9 +47,9 @@ async def test_get_ticker_uses_shared_client(monkeypatch):
 @pytest.mark.asyncio
 async def test_get_price_uses_shared_client(monkeypatch):
     dummy_client = DummyMexcClient()
-    monkeypatch.setattr("infrastructure.external.mexc_client", dummy_client)
+    monkeypatch.setattr(market_routes, "_get_mexc_client", lambda: dummy_client)
 
-    result = await market_routes.get_price("QRLUSDT")
+    result = await market_routes.price_endpoint("QRLUSDT")
 
     assert result["price"] == "0.123456"
     assert dummy_client.price_called is True

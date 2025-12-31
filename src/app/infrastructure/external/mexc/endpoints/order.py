@@ -1,5 +1,5 @@
 """Order endpoints wrapper."""
-from src.app.infrastructure.external.mexc.trade_repo import TradeRepoMixin
+from src.app.infrastructure.external.mexc.repos.trade_repo import TradeRepoMixin
 
 OrderEndpoints = TradeRepoMixin
 
