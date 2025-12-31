@@ -1,1 +1,1 @@
-User request: Implement protobuf usage for websocket proto files as per problem statement; understand how to use definitions. Track work per instructions.
+User request: Analyze project gaps using Sequential-Thinking, plan with Software-Planning-Tool. When production success rate <95%, use Context7 get-library-docs and resolve-library-id. Follow repo instructions to implement requirements.

@@ -95,6 +95,40 @@ async def test_binary_decoder(monkeypatch):
     assert message == {"decoded": "abc"}
 
 
+@pytest.mark.asyncio
+async def test_connect_public_trades_defaults_to_push_decoder(monkeypatch):
+    captured = {}
+
+    class DummyClient:
+        def __init__(self, *args, **kwargs):
+            captured["decoder"] = kwargs.get("binary_decoder")
+            self._data = [{"ok": True}]
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            return False
+
+        def __aiter__(self):
+            return self
+
+        async def __anext__(self):
+            if not self._data:
+                raise StopAsyncIteration
+            return self._data.pop(0)
+
+    monkeypatch.setattr(ws_client, "MEXCWebSocketClient", DummyClient)
+
+    messages = []
+    async for msg in ws_client.connect_public_trades("btc"):
+        messages.append(msg)
+        break
+
+    assert captured["decoder"] is ws_client.decode_push_data
+    assert messages[0]["ok"] is True
+
+
 def test_channel_builders_and_proto_decoder():
     assert (
         ws_client.trade_stream("btcusdt")
