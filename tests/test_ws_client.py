@@ -106,6 +106,14 @@ def test_channel_builders_and_proto_decoder():
     assert ws_client.partial_depth_stream("qrlusdt", 10) == (
         "spot@public.limit.depth.v3.api.pb@QRLUSDT@10"
     )
+    assert (
+        ws_client.mini_tickers_stream("UTC+8")
+        == "spot@public.miniTickers.v3.api.pb@UTC+8"
+    )
+    assert (
+        ws_client.mini_ticker_stream("mxusdt", "UTC+8")
+        == "spot@public.miniTicker.v3.api.pb@MXUSDT@UTC+8"
+    )
     with pytest.raises(ValueError):
         ws_client.trade_stream("qrl", interval="1s")
 

@@ -74,7 +74,11 @@ def book_ticker_batch_stream(symbol: str) -> str:
 
 
 def mini_tickers_stream(timezone: str = "UTC+0") -> str:
-    return f"spot@public.mini.ticker.v3.api.pb@{timezone}"
+    return f"spot@public.miniTickers.v3.api.pb@{timezone}"
+
+
+def mini_ticker_stream(symbol: str, timezone: str = "UTC+0") -> str:
+    return f"spot@public.miniTicker.v3.api.pb@{symbol.upper()}@{timezone}"
 
 
 __all__ = [
@@ -87,4 +91,5 @@ __all__ = [
     "book_ticker_stream",
     "book_ticker_batch_stream",
     "mini_tickers_stream",
+    "mini_ticker_stream",
 ]

@@ -13,6 +13,7 @@ from src.app.infrastructure.external.mexc.websocket.market_streams import (
     diff_depth_stream,
     kline_stream,
     mini_tickers_stream,
+    mini_ticker_stream,
     partial_depth_stream,
     trade_stream,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "book_ticker_stream",
     "book_ticker_batch_stream",
     "mini_tickers_stream",
+    "mini_ticker_stream",
     "build_protobuf_decoder",
     "user_deals_stream",
     "user_orders_stream",
