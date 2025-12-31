@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
+from types import SimpleNamespace
 
 # Ensure project root is on sys.path for module imports
 sys.path.append(str(Path(__file__).resolve().parents[1]))
@@ -50,10 +51,42 @@ class DummyMexcClientMissingPrice(DummyMexcClient):
         return {"symbol": symbol, "price": None}
 
 
+class DummyMexcWithSettings:
+    def __init__(self, api_key=None, secret_key=None):
+        self.settings = SimpleNamespace(api_key=api_key, secret_key=secret_key)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+
+class DummyRedis:
+    def __init__(self, cached=None):
+        self.connected = True
+        self.cached = cached or {}
+        self.saved = None
+
+    async def connect(self):
+        self.connected = True
+        return True
+
+    async def get_mexc_raw_response(self, endpoint):
+        return self.cached
+
+    async def set_mexc_raw_response(self, endpoint, payload):
+        self.saved = payload
+        return True
+
+
 @pytest.mark.asyncio
 async def test_balance_includes_qrl_value(monkeypatch):
     dummy_client = DummyMexcClient()
-    monkeypatch.setattr(mexc_module, "mexc_client", dummy_client)
+    import src.app.infrastructure.external as external
+
+    monkeypatch.setattr(external, "mexc_client", dummy_client)
+    monkeypatch.setattr(external, "redis_client", DummyRedis())
 
     result = await account_routes.get_account_balance()
 
@@ -68,7 +101,54 @@ async def test_balance_includes_qrl_value(monkeypatch):
 @pytest.mark.asyncio
 async def test_balance_requires_price(monkeypatch):
     dummy_client = DummyMexcClientMissingPrice()
-    monkeypatch.setattr(mexc_module, "mexc_client", dummy_client)
+    import src.app.infrastructure.external as external
+
+    monkeypatch.setattr(external, "mexc_client", dummy_client)
+    monkeypatch.setattr(external, "redis_client", DummyRedis())
 
     with pytest.raises(HTTPException):
         await account_routes.get_account_balance()
+
+
+@pytest.mark.asyncio
+async def test_has_credentials_reads_settings():
+    client = DummyMexcWithSettings(api_key="k", secret_key="s")
+    assert account_routes._has_credentials(client) is True
+
+
+@pytest.mark.asyncio
+async def test_orders_endpoint_uses_cache_when_no_credentials(monkeypatch):
+    dummy_client = DummyMexcWithSettings()
+    cached_payload = {"orders": [{"id": 1}], "symbol": "TEST"}
+    dummy_redis = DummyRedis(cached=cached_payload)
+
+    import src.app.infrastructure.external as external
+
+    monkeypatch.setattr(external, "redis_client", dummy_redis)
+    monkeypatch.setattr(account_routes, "_get_mexc_client", lambda: dummy_client)
+
+    result = await account_routes.orders_endpoint()
+
+    assert result["source"] == "cache"
+    assert result["orders"] == cached_payload["orders"]
+
+
+@pytest.mark.asyncio
+async def test_orders_endpoint_caches_api_response(monkeypatch):
+    dummy_client = DummyMexcWithSettings(api_key="k", secret_key="s")
+    dummy_redis = DummyRedis()
+
+    import src.app.infrastructure.external as external
+
+    monkeypatch.setattr(external, "redis_client", dummy_redis)
+    monkeypatch.setattr(account_routes, "_get_mexc_client", lambda: dummy_client)
+
+    async def fake_get_orders(symbol, mexc_client):
+        return {"success": True, "source": "api", "symbol": symbol, "orders": [{"id": 2}], "count": 1, "timestamp": "now"}
+
+    monkeypatch.setattr(account_routes, "get_orders", fake_get_orders)
+
+    result = await account_routes.orders_endpoint()
+
+    assert result["orders"] == [{"id": 2}]
+    assert dummy_redis.saved is not None
