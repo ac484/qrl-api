@@ -39,7 +39,7 @@ class SupabaseSettings(BaseSettings):
         """
         Allow legacy SUPABASE_SCHEMA to populate the schema when no explicit value is set.
         """
-        if self.database_schema and self.database_schema != DEFAULT_SCHEMA:
+        if self.database_schema != DEFAULT_SCHEMA:
             return
 
         legacy_schema = os.getenv("SUPABASE_SCHEMA")
