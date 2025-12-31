@@ -7,6 +7,10 @@ from typing import Optional
 from dotenv import dotenv_values
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+ENV_FILE = ".env"
+DEFAULT_SCHEMA = "public"
+_DOTENV_VALUES = dotenv_values(ENV_FILE)
+
 
 class SupabaseSettings(BaseSettings):
     """
@@ -20,11 +24,11 @@ class SupabaseSettings(BaseSettings):
     url: Optional[str] = None
     key: Optional[str] = None
     service_role_key: Optional[str] = None
-    database_schema: str = "public"
+    database_schema: str = DEFAULT_SCHEMA
     timeout: int = 10
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILE,
         env_prefix="SUPABASE_",
         extra="ignore",
         protected_namespaces=(),
@@ -35,7 +39,7 @@ class SupabaseSettings(BaseSettings):
         """
         Allow legacy SUPABASE_SCHEMA to populate the schema when no explicit value is set.
         """
-        if self.database_schema and self.database_schema != "public":
+        if self.database_schema and self.database_schema != DEFAULT_SCHEMA:
             return
 
         legacy_schema = os.getenv("SUPABASE_SCHEMA")
@@ -43,8 +47,7 @@ class SupabaseSettings(BaseSettings):
             object.__setattr__(self, "database_schema", legacy_schema)
             return
 
-        env_values = dotenv_values(self.model_config.get("env_file", ".env"))
-        legacy_schema = env_values.get("SUPABASE_SCHEMA")
+        legacy_schema = _DOTENV_VALUES.get("SUPABASE_SCHEMA")
         if legacy_schema:
             object.__setattr__(self, "database_schema", legacy_schema)
 

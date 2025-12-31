@@ -15,7 +15,7 @@ Aligned Supabase settings schema configuration with environment expectations and
 
 ### Modified
 
-- src/app/infrastructure/supabase/config.py - Added legacy SUPABASE_SCHEMA support while preserving default and existing configuration handling.
+- src/app/infrastructure/supabase/config.py - Added legacy SUPABASE_SCHEMA support while preserving default and existing configuration handling, now cached via shared constants.
 
 ### Removed
 
@@ -31,7 +31,7 @@ Aligned Supabase settings schema configuration with environment expectations and
 
 ### Files Modified (2)
 
-- src/app/infrastructure/supabase/config.py - Supabase settings schema handling adjusted for legacy env support.
+- src/app/infrastructure/supabase/config.py - Supabase settings schema handling adjusted for legacy env support with cached dotenv lookup.
 - tests/test_supabase_infra.py - Tests extended for schema env mapping and EventLogger fallback.
 
 ### Files Removed (0)
