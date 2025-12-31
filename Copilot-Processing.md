@@ -1,1 +1,3 @@
-User request: Setup Supabase infrastructure per provided directory layout (client, config, repositories, services, utils) for app/infrastructure/supabase with foundational files. Use sequential-thinking and software planning tool. Maintain minimal changes, run report_progress for plan, follow repo instructions.
+User request: Analyze repo configs to optimize performance or reduce Cloud Run resource usage; example: remove 30s auto-refresh.
+Repo: 7Spade/qrl-api
+Task: Identify and implement minimal changes to improve efficiency per problem statement.
