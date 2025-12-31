@@ -26,10 +26,44 @@ def _get_mexc_client():
 
 
 def _has_credentials(mexc_client) -> bool:
-    return bool(
-        getattr(mexc_client, "api_key", None)
-        and getattr(mexc_client, "secret_key", None)
-    )
+    settings = getattr(mexc_client, "settings", None)
+    return bool(getattr(settings, "api_key", None) and getattr(settings, "secret_key", None))
+
+
+async def _cache_orders(payload):
+    try:
+        from src.app.infrastructure.external import redis_client
+
+        if not redis_client.connected:
+            await redis_client.connect()
+        await redis_client.set_mexc_raw_response("openOrders", payload)
+    except Exception as exc:
+        logger.warning(f"Failed to cache orders: {exc}")
+        return False
+    return True
+
+
+async def _get_cached_orders():
+    try:
+        from src.app.infrastructure.external import redis_client
+
+        if not redis_client.connected:
+            await redis_client.connect()
+        cached = await redis_client.get_mexc_raw_response("openOrders")
+        if cached:
+            orders = cached.get("orders") or cached.get("data") or []
+            return {
+                "success": True,
+                "source": "cache",
+                "symbol": cached.get("symbol") or "QRLUSDT",
+                "orders": orders,
+                "count": len(orders),
+                "timestamp": datetime.now().isoformat(),
+                "note": "served from cache",
+            }
+    except Exception as exc:
+        logger.warning(f"Failed to load cached orders: {exc}")
+    return None
 
 
 @router.get("/balance")
@@ -65,14 +99,26 @@ async def get_cached_balance():
 async def orders_endpoint():
     """Get user's open orders for QRL/USDT (real-time from MEXC API)."""
     mexc_client = _get_mexc_client()
-    if not _has_credentials(mexc_client):
-        raise HTTPException(
-            status_code=503, detail="MEXC API credentials required for orders"
-        )
-    
+
     try:
-        from infrastructure.external.mexc_client.account import QRL_USDT_SYMBOL
+        from src.app.infrastructure.external.mexc.account import QRL_USDT_SYMBOL
+
+        if not _has_credentials(mexc_client):
+            cached = await _get_cached_orders()
+            if cached:
+                return cached
+            return {
+                "success": True,
+                "source": "cache",
+                "symbol": QRL_USDT_SYMBOL,
+                "orders": [],
+                "count": 0,
+                "timestamp": datetime.now().isoformat(),
+                "note": "API credentials missing; returning empty orders",
+            }
+
         result = await get_orders(QRL_USDT_SYMBOL, mexc_client)
+        await _cache_orders(result)
         return result
     except Exception as e:
         logger.error(f"Failed to get orders: {e}")

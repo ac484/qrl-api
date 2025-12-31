@@ -16,6 +16,7 @@ def test_tasks_router_exposes_expected_paths():
     assert "/tasks/01-min-job" in paths
     assert "/tasks/05-min-job" in paths
     assert "/tasks/15-min-job" in paths
+    assert "/tasks/runtime" in paths
 
 
 @pytest.mark.asyncio
