@@ -12,6 +12,11 @@
 - [部署步驟概要](#部署步驟概要)
 - [重要注意事項](#重要注意事項)
 
+### 文檔索引（其他檔案）
+- `ARCHITECTURE_TREE.md`：目標目錄結構；搭配 `ARCHITECTURE_RULES.md`。
+- `03-Deployment.md`：部署、Secrets、Scheduler 合併指南。
+- 歷史 API/WebSocket 參考：`docs/archive/legacy-api/`（只讀備份）。
+
 ---
 
 ## 🏗️ 系統架構設計

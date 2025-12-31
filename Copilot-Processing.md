@@ -1,1 +1,1 @@
-User request: Analyze project dependencies and plan with Sequential-Thinking and Software-Planning-Tool. Ensure MEXC V3 K-line Streams display, avoid API key requirement for read-only orders, and fix top 5 order book display anomalies (buy/sell price and quantity not shown). Use Context7 resolve-library-id and get-library-docs when production hit rate <95%.
+User request:整理 docs architecture files naming consistent, dedupe content, classify, remove conflicts/outdated.

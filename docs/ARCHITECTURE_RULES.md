@@ -1,6 +1,6 @@
 ## Architecture Guardrails (Progressive Migration)
 
-These rules formalize the migration targets described in `ARCHITECTURE_TREE.md`, `結構.md`, and `調整結構.md`. They apply to **new code under `src/app`** so we can evolve safely without breaking the legacy runtime.
+These rules formalize the migration targets described in `ARCHITECTURE_TREE.md` and `architecture/ARCHITECTURE.md`. They apply to **new code under `src/app`** so we can evolve safely without breaking the legacy runtime.
 
 ### Scope
 - Covers Python modules inside `src/app/**`.

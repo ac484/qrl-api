@@ -4,6 +4,8 @@
 **Total Files**: 46
 **Total Size**: 343.4 KB
 
+> Note: Snapshot captured before the 2025-12-31 documentation cleanup; several files listed below have since been removed or archived (see `docs/archive/legacy-api/` and `03-Deployment.md`).
+
 ## Executive Summary
 
 - **Files to Delete**: 6 (13.0%)

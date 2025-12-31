@@ -2,6 +2,8 @@
 
 ## Executive Summary
 
+> Status: Phases 1-3 executed on 2025-12-31 — obsolete planning docs removed, legacy API/WebSocket notes archived under `docs/archive/legacy-api/`, deployment guides merged into `docs/03-Deployment.md`.
+
 Analysis of 83 markdown documentation files revealed **7 obsolete files (8.4%)** that can be deleted immediately, **10 legacy files (12.0%)** that should be archived, and **3 deployment guides** that need consolidation. The cleanup will reduce documentation by 20+ files while preserving valuable analysis reports and active guides.
 
 ## Analysis Results
@@ -35,7 +37,7 @@ Analysis of 83 markdown documentation files revealed **7 obsolete files (8.4%)**
 
 2. **Copilot-Processing.md** (430 bytes)
    - Reason: Temporary Copilot processing tracker
-   - Status: No longer needed
+   - Status: Kept only when automation requires it; otherwise safe to remove
 
 3. **結構.md** (2.6 KB)
    - Reason: Chinese temporary structure planning doc
