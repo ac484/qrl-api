@@ -15,6 +15,19 @@ Please process the data according to the parameters returned in the documentatio
 - **在瀏覽器解 protobuf**：若前端直接連到 `*.api.pb` channel，可在瀏覽器端安裝 `protobufjs@7.2.5`（支援 proto3），並引入官方 proto schema（來源：https://github.com/mexcdevelop/websocket-proto）；可優先使用 `protobufjs/light` 並搭配 tree-shaking 以降低瀏覽器 bundle 大小。
 - **後端轉 JSON 再推送**：若由後端解析再轉推前端，確保 Python 端已安裝 `protobuf`（已在 `requirements.txt` 鎖定 `protobuf==4.25.1`），再將解析後的 JSON 串流給圖表元件。
 
+## 實現方式與計畫 (Implementation plan)
+
+1) 後端處理
+- 以 websockets 連 MEXC `*.api.pb` channel，使用 `protobuf==4.25.1` 解析 proto，轉為標準 JSON。
+- 依資料型態拆不同推播：交易/klines -> K 線 & 成交量；depth -> order book; ticker/miniTicker -> 指標卡片。
+- 透過內部 WS/SSE/Redis pub-sub 將 JSON 轉送到前端，並保留心跳/重連邏輯。
+
+2) 前端顯示
+- kline/成交量：`lightweight-charts` 或 `chart.js + chartjs-chart-financial`。
+- depth/heatmap：`apache-echarts` 折線/面積/heatmap。
+- protobuf 直讀：若前端直連 WS，裝 `protobufjs@7.2.5` + 官方 schema；若取後端 JSON，直接餵圖表即可。
+- 加上滑動視窗快取與節流 (如 100ms) 以避免過度重繪。
+
 Live Subscription/Unsubscription to Data Streams
 The following data can be sent via websocket to subscribe or unsubscribe from data streams. Examples are provided below.
 The in the response is an unsigned integer and serves as the unique identifier for communication.id
