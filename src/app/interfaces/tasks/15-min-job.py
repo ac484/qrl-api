@@ -12,7 +12,7 @@ async def runtime_keepalive():
     """
     Lightweight runtime health endpoint for task keepalive probes.
     """
-    return {"success": True, "message": "01-min-job"}
+    return {"success": True, "message": "15-min-job"}
 
 
 __all__ = ["router", "runtime_keepalive"]
