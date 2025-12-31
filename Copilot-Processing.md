@@ -1,1 +1,1 @@
-User request: Analyze project gaps using Sequential-Thinking, plan with Software-Planning-Tool. When production success rate <95%, use Context7 get-library-docs and resolve-library-id. Follow repo instructions to implement requirements.
+User request: Setup Supabase infrastructure per provided directory layout (client, config, repositories, services, utils) for app/infrastructure/supabase with foundational files. Use sequential-thinking and software planning tool. Maintain minimal changes, run report_progress for plan, follow repo instructions.
