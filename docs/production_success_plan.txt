@@ -1,0 +1,24 @@
+Production success rate gap analysis and plan
+
+Current gaps
+- No runtime telemetry library is installed (no Prometheus/OpenTelemetry or Cloud Monitoring exporter), so there is no production success rate metric to observe.
+- FastAPI routes and Cloud Scheduler/Tasks handlers do not log standardized outcomes or success/error counters; existing monitoring guidance in docs/README.md is conceptual only.
+- Success rate is undefined across bot lifecycle (API calls, scheduled jobs, exchange interactions), making alerting thresholds and auto-remediation impossible.
+
+Proposed definition
+- API stream: success_rate = successful HTTP responses (2xx/3xx, latency < 1s) / total requests over a rolling 15-minute window; target ≥99%, alert when <95%.
+- Scheduler/task stream: success_rate = completed task executions without exceptions or retries / total task triggers over a rolling 15-minute window; target ≥98%, alert when <95%.
+- Trading operations: success_rate = exchange operations acknowledged (order/place/cancel/balance sync) / attempted operations per hour; target ≥98%, alert when <95%.
+
+Data capture plan
+- Add prometheus_client counters for each stream (e.g., qrl_api_requests_total{route,status}, qrl_task_runs_total{job, outcome}, qrl_exchange_ops_total{op, outcome}) and expose /metrics via FastAPI.
+- Instrument Cloud Scheduler/Tasks entrypoints to increment success/failure counters and emit structured logs with request_id/symbol/order_id for correlation.
+- Persist per-job last outcome in Redis (mexc:{job}:last_status, mexc:{job}:last_success_ts) for lightweight health checks.
+
+Alerting and response
+- Define alert rules for success_rate <95% over 15-minute windows; send to email/Telegram and automatically pause trading if <90% persists for 10 minutes.
+- When success rate drops below 95%, run a remediation checklist that includes using Context7 resolve-library-id and get-library-docs for the impacted dependency (e.g., fastapi or prometheus_client) to confirm current best-practice instrumentation and apply fixes.
+
+Next actions
+- Implement metrics middleware and task instrumentation, wire Prometheus scrape/Cloud Monitoring export, and publish a dashboard showing per-stream success rates.
+- Add runbook entries for the <95% threshold (alert routing, trade pause toggle, Context7-based doc lookup, rollback/fix steps).
