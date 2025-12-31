@@ -9,6 +9,28 @@ For example, when using the encrypted WebSocket protocol: wss://wbs-api.mexc.com
 A single connection is only valid for 24 hours; expect to be disconnected at the 24 hour mark.
 Each UID can apply for a maximum of 60 listen keys (excluding invalid listen keys).
 Each listen key maximum support 5 websocket connection (which means each uid can applies for a maximum of 60 listen keys and 300 ws links).
+
+## Web visualization packages (Web 視覺化套件建議)
+
+- **帳戶淨值／餘額走勢**：`lightweight-charts` 或 `chart.js + chartjs-adapter-luxon` 可以即時繪製餘額、保證金、PnL 的時間序列。
+- **資產分佈與費用分析**：`apache-echarts` 提供 pie/bar 報表，可用於資產佔比、手續費累計、成交量對比。
+- **表格與即時狀態**：若需要同步展示訂單、成交明細，可搭配 `@tanstack/react-table`（React）或 `@tanstack/table-core` 搭配 UI 套件（例如 MUI/AntD 的 Table 元件）；chart 只負責視覺化。
+- **在瀏覽器解 protobuf**：前端若直接連 `*.api.pb` channel，可安裝 `protobufjs@7.2.5` 並引入官方 proto schema（來源：https://github.com/mexcdevelop/websocket-proto）；確認版本支援 proto3 且與後端生成的 schema 保持一致。
+- **後端轉 JSON 再推送**：如由後端轉 JSON，再將資料推到前端表格／圖表前，確保 Python 端已安裝 `protobuf`（`requirements.txt` 中已固定版本 `protobuf==4.25.1`）。
+
+## 實現方式與計畫 (Implementation plan)
+
+1) 後端處理
+- 以 websockets 連 `spot@private.*.api.pb`，用 `protobuf==4.25.1` 解析，轉標準 JSON；對資產/訂單/成交拆 topic 推播。
+- 加入心跳、重連、listenKey 更新；對私有訊息做基本過濾與敏感欄位遮罩再分發。
+- 透過內部 WS/SSE/Redis pub-sub 將 JSON 推給前端表格與圖表。
+
+2) 前端顯示
+- 餘額/資產走勢：`lightweight-charts` 或 `chart.js + chartjs-adapter-luxon`。
+- 資產佔比、費用：`apache-echarts` pie/bar。
+- 訂單、成交表格：`@tanstack/react-table` (React) 或 `table-core + UI Table`；若前端直連 protobuf，裝 `protobufjs@7.2.5` + 官方 schema；若取後端 JSON，直接渲染即可。
+- 對推播頻率做節流或批次合併，避免高頻刷新。
+
 Listen Key
 Generate Listen Key
 Response
