@@ -5,6 +5,9 @@ MEXC API Integration for QRL/USDT Trading Bot
 This is the refactored main application file following clean architecture principles.
 All route handlers have been extracted to separate modules in the api/ directory.
 """
+from google.protobuf import message
+from google.protobuf import json_format
+
 import logging
 import sys
 from datetime import datetime
