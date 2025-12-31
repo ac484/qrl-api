@@ -1,1 +1,1 @@
-User request: Implement protobuf usage for websocket proto files as per problem statement; understand how to use definitions. Track work per instructions.
+User request: Integrate protobuf message handling for websocket proto definitions located in src/app/infrastructure/external/proto/websocket-proto/*.proto with protobuf==4.25.1 already in requirements. Main.py already imports google.protobuf.message and json_format. Need to apply proto definitions accordingly.
