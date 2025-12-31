@@ -1,77 +1,41 @@
 """
-Channel builders and protobuf decoder helpers for MEXC spot websocket v3.
+Compatibility wrapper for websocket channel helpers.
+
+Cloud Run startup expects legacy import paths like
+``src.app.infrastructure.external.mexc.ws_channels`` to exist. This module
+forwards to the separated implementations under
+``src.app.infrastructure.external.mexc.websocket``.
 """
-from __future__ import annotations
+from src.app.infrastructure.external.mexc.websocket.data_streams import (
+    DEFAULT_USER_STREAM_CHANNELS,
+    account_update_stream,
+    user_deals_stream,
+    user_orders_stream,
+)
+from src.app.infrastructure.external.mexc.websocket.market_streams import (
+    BinaryDecoder,
+    book_ticker_batch_stream,
+    book_ticker_stream,
+    build_protobuf_decoder,
+    diff_depth_stream,
+    kline_stream,
+    mini_tickers_stream,
+    partial_depth_stream,
+    trade_stream,
+)
 
-from typing import Any, Callable, Type
-
-from google.protobuf.json_format import MessageToDict
-from google.protobuf.message import Message
-
-BinaryDecoder = Callable[[bytes], Any]
-
-_TRADE_INTERVALS = {"100ms", "10ms"}
-_DEPTH_LIMITS = {5, 10, 20}
-_KLINE_INTERVALS = {
-    "Min1",
-    "Min5",
-    "Min15",
-    "Min30",
-    "Min60",
-    "Hour4",
-    "Hour8",
-    "Day1",
-    "Week1",
-    "Month1",
-}
-
-
-def build_protobuf_decoder(message_cls: Type[Message]) -> BinaryDecoder:
-    """
-    Create a decoder that converts protobuf bytes into a Python dict.
-    """
-
-    def _decoder(raw: bytes) -> dict:
-        message = message_cls()
-        message.ParseFromString(raw)
-        return MessageToDict(message, preserving_proto_field_name=True)
-
-    return _decoder
-
-
-def trade_stream(symbol: str, interval: str = "100ms") -> str:
-    if interval not in _TRADE_INTERVALS:
-        raise ValueError(f"interval must be one of {_TRADE_INTERVALS}")
-    return f"spot@public.aggre.deals.v3.api.pb@{interval}@{symbol.upper()}"
-
-
-def kline_stream(symbol: str, interval: str) -> str:
-    if interval not in _KLINE_INTERVALS:
-        raise ValueError(f"interval must be one of {_KLINE_INTERVALS}")
-    return f"spot@public.kline.v3.api.pb@{symbol.upper()}@{interval}"
-
-
-def diff_depth_stream(symbol: str, interval: str = "100ms") -> str:
-    if interval not in _TRADE_INTERVALS:
-        raise ValueError(f"interval must be one of {_TRADE_INTERVALS}")
-    return f"spot@public.aggre.depth.v3.api.pb@{interval}@{symbol.upper()}"
-
-
-def partial_depth_stream(symbol: str, depth: int = 5) -> str:
-    if depth not in _DEPTH_LIMITS:
-        raise ValueError(f"depth must be one of {_DEPTH_LIMITS}")
-    return f"spot@public.limit.depth.v3.api.pb@{symbol.upper()}@{depth}"
-
-
-def book_ticker_stream(symbol: str, interval: str = "100ms") -> str:
-    if interval not in _TRADE_INTERVALS:
-        raise ValueError(f"interval must be one of {_TRADE_INTERVALS}")
-    return f"spot@public.aggre.bookTicker.v3.api.pb@{interval}@{symbol.upper()}"
-
-
-def book_ticker_batch_stream(symbol: str) -> str:
-    return f"spot@public.bookTicker.batch.v3.api.pb@{symbol.upper()}"
-
-
-def mini_tickers_stream(timezone: str = "UTC+0") -> str:
-    return f"spot@public.mini.ticker.v3.api.pb@{timezone}"
+__all__ = [
+    "BinaryDecoder",
+    "book_ticker_batch_stream",
+    "book_ticker_stream",
+    "build_protobuf_decoder",
+    "diff_depth_stream",
+    "kline_stream",
+    "mini_tickers_stream",
+    "partial_depth_stream",
+    "trade_stream",
+    "DEFAULT_USER_STREAM_CHANNELS",
+    "account_update_stream",
+    "user_deals_stream",
+    "user_orders_stream",
+]

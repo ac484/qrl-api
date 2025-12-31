@@ -10,6 +10,7 @@ from typing import Any, AsyncIterator, Iterable, Optional
 from src.app.infrastructure.external.mexc import MEXCClient
 from src.app.infrastructure.external.mexc.ws_channels import (
     BinaryDecoder,
+    DEFAULT_USER_STREAM_CHANNELS,
     book_ticker_batch_stream,
     book_ticker_stream,
     build_protobuf_decoder,
@@ -66,14 +67,7 @@ async def connect_user_stream(
             )
 
         url = f"{WS_BASE}?listenKey={listen_key}"
-        subs = list(
-            channels
-            or [
-                "spot@private.account.v3.api.pb",
-                "spot@private.deals.v3.api.pb",
-                "spot@private.orders.v3.api.pb",
-            ]
-        )
+        subs = list(channels or DEFAULT_USER_STREAM_CHANNELS)
 
         try:
             async with MEXCWebSocketClient(

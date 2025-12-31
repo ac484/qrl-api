@@ -114,3 +114,19 @@ def test_channel_builders_and_proto_decoder():
     struct.update({"foo": "bar"})
     decoded = decoder(struct.SerializeToString())
     assert decoded["foo"] == "bar"
+
+
+def test_user_data_stream_builders():
+    from src.app.infrastructure.external.mexc.websocket import data_streams
+    from src.app.infrastructure.external.mexc.ws import ws_channels
+
+    assert data_streams.account_update_stream() == "spot@private.account.v3.api.pb"
+    assert data_streams.user_deals_stream() == "spot@private.deals.v3.api.pb"
+    assert data_streams.user_orders_stream() == "spot@private.orders.v3.api.pb"
+    assert data_streams.DEFAULT_USER_STREAM_CHANNELS == [
+        "spot@private.account.v3.api.pb",
+        "spot@private.deals.v3.api.pb",
+        "spot@private.orders.v3.api.pb",
+    ]
+    # Legacy import path continues to work
+    assert ws_channels.account_update_stream() == "spot@private.account.v3.api.pb"
