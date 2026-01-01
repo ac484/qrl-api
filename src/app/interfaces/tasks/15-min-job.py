@@ -66,7 +66,18 @@ async def task_15_min_job(
         logger.info("[15-min-job] Executing rebalance plan generation...")
         balance_service = BalanceService(mexc_client, redis_client)
         rebalance_service = RebalanceService(balance_service, redis_client)
-        rebalance_plan = await rebalance_service.generate_plan()
+        
+        # Get balance snapshot for debugging
+        snapshot = await balance_service.get_account_balance()
+        logger.info(
+            f"[15-min-job] Balance snapshot - "
+            f"QRL: {snapshot.get('balances', {}).get('QRL', {}).get('total', 0)}, "
+            f"USDT: {snapshot.get('balances', {}).get('USDT', {}).get('total', 0)}, "
+            f"Price: {snapshot.get('prices', {}).get('QRLUSDT', 'N/A')}, "
+            f"Source: {snapshot.get('source', 'unknown')}"
+        )
+        
+        rebalance_plan = await rebalance_service.generate_plan(snapshot)
 
         end_time = datetime.now()
         duration_ms = int((end_time - start_time).total_seconds() * 1000)

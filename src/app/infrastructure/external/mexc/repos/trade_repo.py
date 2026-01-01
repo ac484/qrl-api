@@ -43,7 +43,7 @@ class TradeRepoMixin:
         return await self._request("GET", "/api/v3/order", params=params, signed=True)
 
     async def get_open_orders(self, symbol: Optional[str] = None) -> Dict[str, Any]:  # type: ignore[name-defined]
-        params = {"timestamp": None}
+        params = {}
         if symbol:
             params["symbol"] = symbol
         return await self._request(
