@@ -1,14 +1,15 @@
-Websocket User Data Streams
+## Websocket User Data Streams
 The base API endpoint is: https://api.mexc.com
-A User Data Stream listenKey is valid for 60 minutes after creation.
-Doing a PUT on a listenKey will extend its validity for 60 minutes.
-Doing a DELETE on a listenKey will close the stream and invalidate the listenKey.
 websocket baseurl: wss://wbs-api.mexc.com/ws
 User Data Streams are accessed at /ws?listenKey=listenKey
-For example, when using the encrypted WebSocket protocol: wss://wbs-api.mexc.com/ws?listenKey=pqia91ma19a5s61cv6a81va65sd099v8a65a1a5s61cv6a81va65sdf19v8a65a1
-A single connection is only valid for 24 hours; expect to be disconnected at the 24 hour mark.
-Each UID can apply for a maximum of 60 listen keys (excluding invalid listen keys).
-Each listen key maximum support 5 websocket connection (which means each uid can applies for a maximum of 60 listen keys and 300 ws links).
+
+### Connection basics
+- A listenKey is valid for 60 minutes; send `PUT /api/v3/userDataStream` every ~30 minutes to extend it.
+- Close a listenKey with `DELETE /api/v3/userDataStream` when finished.
+- Each listenKey supports up to 5 websocket connections; each UID can hold up to 60 listenKeys (≈300 ws links).
+- Each ws connection is valid for up to 24 hours; reconnect proactively and resubscribe after expiry.
+- Keep the link alive by replying `{"method":"PONG"}` to server PINGs or sending `{"method":"PING"}` on your own heartbeat.
+- Example private URL: `wss://wbs-api.mexc.com/ws?listenKey=pqia91ma19a5s61cv6a81va65sdf19v8a65a1a5s61cv6a81va65sdf19v8a65a1`
 
 ## Web visualization packages (Web 視覺化套件建議)
 
@@ -30,6 +31,13 @@ Each listen key maximum support 5 websocket connection (which means each uid can
 - 資產佔比、費用：`apache-echarts` pie/bar。
 - 訂單、成交表格：`@tanstack/react-table` (React) 或 `table-core + UI Table`；若前端直連 protobuf，裝 `protobufjs@7.2.5` + 官方 schema；若取後端 JSON，直接渲染即可。
 - 對推播頻率做節流或批次合併，避免高頻刷新。
+
+## Protocol Buffers Integration
+- 官方 protobuf schema: https://github.com/mexcdevelop/websocket-proto
+- Python 端已內建編譯後的 messages：`src/app/infrastructure/external/proto/websocket_pb/`
+- `connect_user_stream` 預設使用 `decode_push_data`（自 `src.app.infrastructure.external.mexc.ws.ws_client` 匯出）將 `PushDataV3ApiWrapper` bytes 轉成 `dict`，若需要自訂解析可改傳自己的 `binary_decoder`
+- 私有頻道預設訂閱：`spot@private.account.v3.api.pb`、`spot@private.deals.v3.api.pb`、`spot@private.orders.v3.api.pb`
+- 建議的 keepalive：每 30 分鐘刷新 listenKey（REST），ws 端維持 PING/PONG heartbeats
 
 Listen Key
 Generate Listen Key
