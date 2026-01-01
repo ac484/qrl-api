@@ -1,2 +1,1 @@
-User request: 使用 Context7 查詢最新github copilot agent tasks 配置方法，配置專案.github/* 提升 github copilot agent tasks 能力，運用 Sequential-Thinking 方法分析專案，並利用Software-Planning-Tool規劃工具制定實施計畫；當生產把握率低於 99.99% 時，使用 Context7 的 "get-library-docs" 與 "resolve-library-id" 兩個功能。
-User request: 使用 Context7 查詢mexc v3 api 分析如何實施，docs\Websocket Market Streams.md，docs\Websocket User Data Streams.md，使用 Sequential-Thinking 方法分析專案並利用Software-Planning-Tool規劃工具制定實施計畫；當生產把握率低於99.99%時，使用 Context7 的 get-library-docs 與 resolve-library-id。
+User request: Use Context7 to query MEXC v3 API official configuration, apply Sequential-Thinking, plan with Software-Planning-Tool, implement docs/Websocket Market Streams.md and docs/Websocket User Data Streams.md, and complete "Protocol Buffers Integration" application.

@@ -1,11 +1,12 @@
-Websocket Market Streams
+## Websocket Market Streams
 The base endpoint is: wss://wbs-api.mexc.com/ws
-Each connection to wss://wbs-api.mexc.com/ws is valid for no more than 24 hours. Please handle disconnections and reconnections properly.
-All trading pair names in the symbol must be in uppercase. For example:
-Example: spot@public.aggre.deals.v3.api.pb@&lt;symbol&gt;spot@public.aggre.deals.v3.api.pb@100ms@BTCUSDT
-If there is no valid subscription on the websocket, the server will actively disconnect after 30 seconds. If the subscription is successful but there is no data flow, the server will disconnect after one minute. The client can send a ping to keep the connection alive.
-One ws connection supports a maximum of 30 subscriptions.
-Please process the data according to the parameters returned in the documentation. Parameters not returned in the documentation will be optimized soon, so please do not use them.
+
+### Connection basics
+- Each connection is valid for no more than 24 hours; reconnect proactively before expiry.
+- Symbols must be uppercase, for example `spot@public.aggre.deals.v3.api.pb@100ms@BTCUSDT`.
+- One websocket connection supports a maximum of 30 subscriptions; without a valid subscription the server closes the link after ~30 seconds.
+- Send `{"method":"PING"}` periodically (and reply `{"method":"PONG"}` to server PINGs) to keep the connection alive; the server also closes idle links with no data flow after about one minute.
+- Only rely on documented fields; undocumented ones may be removed by the exchange.
 
 ## Web visualization packages (Web 視覺化套件建議)
 
@@ -32,76 +33,45 @@ Live Subscription/Unsubscription to Data Streams
 The following data can be sent via websocket to subscribe or unsubscribe from data streams. Examples are provided below.
 The in the response is an unsigned integer and serves as the unique identifier for communication.id
 If the in the response matches the corresponding request field, it indicates that the request was sent successfully.msg
-Protocol Buffers Integration
-The current websocket push uses the protobuf format. The specific integration process is as follows:
+## Protocol Buffers Integration
+The websocket push uses protobuf envelopes. Official schema files: https://github.com/mexcdevelop/websocket-proto
 
-1.PB File Definition
-The PB definition files can be obtained via the provided link:https://github.com/mexcdevelop/websocket-proto
+1. **PB definition & codegen**
+   - Use `protoc` (https://github.com/protocolbuffers/protobuf) to compile `.proto` files.
+   - Python bindings plus the shared decoder already live in `src/app/infrastructure/external/proto/websocket_pb`.
+   - The default binary decoder `decode_push_data` (re-exported by `src.app.infrastructure.external.mexc.ws.ws_client`) converts `PushDataV3ApiWrapper` frames into a Python `dict`.
 
-2.Generate Deserialization Code
-Use the tool available at https://github.com/protocolbuffers/protobuf to compile the .proto files and generate deserialization code.
+2. **Java example**
+   ```
+   <dependency>
+       <groupId>com.google.protobuf</groupId>
+       <artifactId>protobuf-java</artifactId>
+       <version>{protobuf.version}</version>
+   </dependency>
+   PushDataV3ApiWrapper wrapper = PushDataV3ApiWrapper.newBuilder()
+       .setChannel("spot@public.aggre.depth.v3.api.pb@10ms")
+       .setSymbol("BTCUSDT")
+       .setSendTime(System.currentTimeMillis())
+       .build();
+   byte[] payload = wrapper.toByteArray();
+   PushDataV3ApiWrapper decoded = PushDataV3ApiWrapper.parseFrom(payload);
+   ```
 
-Java
+3. **Python example (uses in-repo bindings + shared decoder)**
+   ```
+   from src.app.infrastructure.external.proto.websocket_pb import PushDataV3ApiWrapper_pb2
+   from src.app.infrastructure.external.mexc.websocket.market_streams import decode_push_data
 
-protoc *.proto --java_out=python custom_path
+   wrapper = PushDataV3ApiWrapper_pb2.PushDataV3ApiWrapper(
+       channel="spot@public.aggre.depth.v3.api.pb@10ms",
+       symbol="BTCUSDT",
+   )
+   payload = wrapper.SerializeToString()
+   print(decode_push_data(payload))  # dict with channel + payload fields
+   ```
 
-Python
-
-protoc *.proto --python_out=python custom_path
-
-Others
-
-Multiple languages are supported, including C++, C#, Go, Ruby, PHP, JS, etc. For details, see <a href="https://github.com/protocolbuffers/protobuf" title="https://github.com/protocolbuffers/protobuf" aria-label="https://github.com/protocolbuffers/protobuf" rel="nofollow">https://github.com/protocolbuffers/protobuf</a>.
-
-
-3.Data Deserialization
-Use the code generated in the previous step to deserialize the data.
-
-Java
-Include the protobuf-java dependency:
-
-<dependency>
-    <groupId>com.google.protobuf</groupId>
-    <artifactId>protobuf-java</artifactId>
-    <version>{protobuf.version}</version> <!-- Specify the version as per your project requirements -->
-</dependency>
-
-//Parsing example:
-
-// Assemble the object
-PushDataV3ApiWrapper pushDataV3ApiWrapper = PushDataV3ApiWrapper.newBuilder()
-        .setChannel("spot@public.aggre.depth.v3.api.pb@10ms")
-        .setSymbol("BTCUSDT")
-        .setSendTime(System.currentTimeMillis())
-        .build();
-
-// Serialize to a byte array
-byte[] serializedData = pushDataV3ApiWrapper.toByteArray();
-
-// Deserialize into a PushDataV3ApiWrapper object
-PushDataV3ApiWrapper resultV3 = PushDataV3ApiWrapper.parseFrom(serializedData);
-
-Python
-
-#Parsing example:
-
-from src.app.infrastructure.external.proto.websocket_pb import PushDataV3ApiWrapper_pb2
-from src.app.infrastructure.external.mexc.websocket.market_streams import decode_push_data
-
-# Assemble the object
-pushData = PushDataV3ApiWrapper_pb2.PushDataV3ApiWrapper()
-pushData.channel = 'spot@public.aggre.depth.v3.api.pb@10ms'
-pushData.symbol = 'BTCUSDT'
-
-# Serialize to a string
-serializedData = pushData.SerializeToString()
-
-# Deserialize into a Python dict using the shared decoder
-print(decode_push_data(serializedData))
-
-Note: the websocket helper `connect_public_trades` (and other protobuf channels)
-now defaults to using `decode_push_data` as its binary decoder, so passing
-`binary_decoder` is optional unless you need custom parsing logic.
+4. **Other languages**
+   protobuf supports C++, C#, Go, Ruby, PHP, JS, and more. If you supply your own decoder, pass it as `binary_decoder` when building `MEXCWebSocketClient`; otherwise the default PushData decoder is used.
 
 Subscribe to a Data Stream
 Subscription Channel Response
