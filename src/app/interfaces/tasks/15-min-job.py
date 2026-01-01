@@ -73,7 +73,9 @@ async def task_15_min_job(
 
         logger.info(
             f"[15-min-job] Completed successfully in {duration_ms}ms - "
-            f"Rebalance action: {rebalance_plan.get('action', 'UNKNOWN')}"
+            f"Rebalance action: {rebalance_plan.get('action', 'UNKNOWN')}, "
+            f"quantity: {rebalance_plan.get('quantity', 0):.4f}, "
+            f"reason: {rebalance_plan.get('reason', 'N/A')}"
         )
 
         return {

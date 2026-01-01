@@ -12,9 +12,9 @@
 | `/tasks/rebalance/symmetric` | POST | 獨立的對稱再平衡計劃 | Cloud Scheduler | ✅ 活躍 |
 | `/tasks/01-min-job` | POST | 帳戶餘額同步（MEXC） | Cloud Scheduler | ✅ 活躍 |
 | `/tasks/05-min-job` | POST | 市場價格同步（MEXC） | Cloud Scheduler | ✅ 活躍 |
-| `/tasks/15-min-job` (sync) | POST | 交易成本更新（MEXC） | Cloud Scheduler | ⚠️ 路徑衝突 |
+| `/tasks/sync-trades` | POST | 交易成本更新（MEXC） | Cloud Scheduler | ✅ 活躍 |
 
-**注意：** 存在路徑衝突 - 兩個不同的處理器都使用 `/tasks/15-min-job`
+**路徑衝突已解決：** MEXC 交易成本同步端點已重命名為 `/tasks/sync-trades`
 
 ---
 
@@ -312,32 +312,38 @@ gcloud scheduler jobs create http sync-market-price \
 
 ---
 
-### POST `/tasks/15-min-job` (MEXC Sync - 路徑衝突)
+### POST `/tasks/sync-trades` (MEXC Sync)
 
-**⚠️ 警告：此端點與主要 15-min-job 端點衝突**
+**✅ 路徑已更新：從 `/tasks/15-min-job` 重命名為 `/tasks/sync-trades`**
 
 #### 功能
 更新交易成本資料（MEXC 同步）
 
-#### 問題
-此端點與新實施的主要整合端點使用相同路徑，可能導致：
-- 路由衝突
-- 不可預測的行為
-- 請求被路由到錯誤的處理器
+#### 實施檔案
+- **路由定義：** `src/app/interfaces/tasks/mexc/sync_trades.py`
+- **處理函數：** `src/app/application/market/sync_cost.py` 中的 `task_update_cost`
 
-#### 建議解決方案
+#### Cloud Scheduler 配置
 
-**選項 1：重命名 MEXC 同步端點（推薦）**
-```python
-# 在 src/app/interfaces/tasks/mexc/sync_trades.py 中
-router.add_api_route("/sync-trades", task_update_cost, methods=["POST"])
+如果您已配置此端點的 Cloud Scheduler 任務，請更新 URI：
+
+```bash
+# 更新現有 Scheduler 任務
+gcloud scheduler jobs update http trades-sync-job \
+  --location=asia-southeast1 \
+  --uri="https://qrl-api-xxx.run.app/tasks/sync-trades"
 ```
 
-**選項 2：整合到主要 15-min-job**
-將交易成本更新邏輯整合到新的 15-min-job 端點中。
+或創建新任務：
 
-**選項 3：使用不同前綴**
-```python
+```bash
+gcloud scheduler jobs create http trades-sync-job \
+  --location=asia-southeast1 \
+  --schedule="*/15 * * * *" \
+  --uri="https://qrl-api-xxx.run.app/tasks/sync-trades" \
+  --http-method=POST \
+  --oidc-service-account-email=scheduler@project.iam.gserviceaccount.com
+```
 router = APIRouter(prefix="/tasks/mexc", tags=["MEXC Sync"])
 router.add_api_route("/trades", task_update_cost, methods=["POST"])
 # 結果路徑: /tasks/mexc/trades
@@ -506,10 +512,11 @@ gcloud run services update qrl-api \
 - 驗證帳戶餘額數據
 - 確認閾值設置（`min_notional`, `threshold_pct`）
 
-**Q: 路徑衝突 - /tasks/15-min-job**
-- 目前有兩個處理器使用此路徑
-- 建議重命名 MEXC sync_trades 端點
-- 或整合功能到主要端點
+**Q: 訂單載入失敗**
+- 檢查 MEXC API 金鑰是否正確配置
+- 驗證帳戶權限（需要交易權限）
+- 查看瀏覽器控制台錯誤日誌
+- 確認 `/account/orders` 端點運作正常
 
 ### 查看日誌
 
@@ -549,15 +556,7 @@ gcloud logging read \
 
 ## ⚠️ 待解決問題
 
-### 1. 路徑衝突
-
-**問題：** `/tasks/15-min-job` 被兩個處理器使用
-- **處理器 1：** 主要整合端點（成本 + 再平衡）
-- **處理器 2：** MEXC 交易成本同步
-
-**建議：** 重命名 MEXC sync_trades 端點為 `/tasks/sync-trades` 或 `/tasks/mexc/trades`
-
-### 2. 成本更新實施
+### 1. 成本更新實施
 
 **狀態：** 在 15-min-job 端點中為預留位置
 ```python
