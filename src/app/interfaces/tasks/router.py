@@ -7,6 +7,10 @@ This module consolidates all scheduled task routers:
 - MEXC sync tasks: Market data, account, and trade synchronization
 """
 
+import logging
+import sys
+from pathlib import Path
+
 from fastapi import APIRouter
 
 from src.app.interfaces.tasks.mexc.sync_account import (
@@ -14,11 +18,8 @@ from src.app.interfaces.tasks.mexc.sync_account import (
 )
 from src.app.interfaces.tasks.mexc.sync_market import router as mexc_sync_market_router
 from src.app.interfaces.tasks.mexc.sync_trades import router as mexc_sync_trades_router
-from src.app.interfaces.tasks.rebalance import router as rebalance_router
 
-# Dynamic import for 15-min-job (file has hyphen in name)
-import sys
-from pathlib import Path
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -41,15 +42,18 @@ try:
         sys.modules["fifteen_min_job_module"] = fifteen_min_job_module
         spec.loader.exec_module(fifteen_min_job_module)
         router.include_router(fifteen_min_job_module.router)
+        logger.info("Successfully registered 15-min-job router")
 except Exception as e:
     # Log but don't fail - allows graceful degradation
-    import logging
-
-    logging.getLogger(__name__).warning(
-        f"Failed to load 15-min-job router: {e}", exc_info=True
-    )
+    logger.warning(f"Failed to load 15-min-job router: {e}", exc_info=True)
 
 # Register standalone rebalance router (manual/legacy support)
-router.include_router(rebalance_router)
+try:
+    from src.app.interfaces.tasks.rebalance import router as rebalance_router
+    router.include_router(rebalance_router)
+    logger.info("Successfully registered rebalance router")
+except Exception as e:
+    # Log but don't fail - allows graceful degradation
+    logger.warning(f"Failed to load rebalance router: {e}", exc_info=True)
 
 __all__ = ["router"]
