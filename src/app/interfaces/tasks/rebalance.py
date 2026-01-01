@@ -1,16 +1,26 @@
 """
 Cloud Scheduler entrypoint for symmetric (equal-value) rebalance planning.
+
+This endpoint can be called independently or via the 15-min-job integration.
+Kept for manual triggering and backward compatibility with existing Cloud Scheduler jobs.
 """
+
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException
 
-from src.app.application.account.sync_balance import _require_scheduler_auth
 from src.app.application.account.balance_service import BalanceService
 from src.app.application.trading.services.trading.rebalance_service import (
     RebalanceService,
 )
 from src.app.infrastructure.external import mexc_client, redis_client
+from src.app.interfaces.tasks.shared import (
+    ensure_redis_connected,
+    require_scheduler_auth,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["Cloud Tasks"])
 
@@ -20,15 +30,39 @@ async def task_rebalance_symmetric(
     x_cloudscheduler: Optional[str] = Header(None, alias="X-CloudScheduler"),
     authorization: Optional[str] = Header(None),
 ):
-    auth_method = _require_scheduler_auth(x_cloudscheduler, authorization)
+    """
+    Generate symmetric (50/50 value) rebalance plan.
+
+    This endpoint can be triggered:
+    1. Directly by Cloud Scheduler (for standalone operation)
+    2. Manually for testing/debugging
+    3. As part of 15-min-job integration (recommended)
+
+    Authentication:
+        Requires Cloud Scheduler authentication via X-CloudScheduler
+        header or OIDC Authorization header.
+
+    Returns:
+        dict: Rebalance plan with action (HOLD/BUY/SELL) and details
+    """
+    # Step 1: Authenticate
+    auth_method = require_scheduler_auth(x_cloudscheduler, authorization)
+    logger.info(f"[rebalance-symmetric] Authenticated via {auth_method}")
+
+    # Step 2: Ensure Redis connection
+    await ensure_redis_connected(redis_client)
 
     try:
-        if not redis_client.connected:
-            await redis_client.connect()
-
+        # Step 3: Generate rebalance plan
         balance_service = BalanceService(mexc_client, redis_client)
         rebalance_service = RebalanceService(balance_service, redis_client)
         plan = await rebalance_service.generate_plan()
+
+        logger.info(
+            f"[rebalance-symmetric] Plan generated - "
+            f"Action: {plan.get('action')}, "
+            f"Quantity: {plan.get('quantity', 0):.4f}"
+        )
 
         return {
             "status": "success",
@@ -36,12 +70,17 @@ async def task_rebalance_symmetric(
             "auth": auth_method,
             "plan": plan,
         }
+
     except HTTPException:
         raise
     except ValueError as exc:
+        logger.error(f"[rebalance-symmetric] Validation error: {exc}")
         raise HTTPException(status_code=400, detail=str(exc))
-    except Exception as exc:  # pragma: no cover - network path
+    except Exception as exc:
+        logger.error(
+            f"[rebalance-symmetric] Execution failed: {exc}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail=str(exc))
 
 
-__all__ = ["router", "task_rebalance_50_50"]
+__all__ = ["router", "task_rebalance_symmetric"]
