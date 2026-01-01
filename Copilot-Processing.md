@@ -1,1 +1,1 @@
-User request: Use Context7 to query MEXC v3 API official configuration, apply Sequential-Thinking, plan with Software-Planning-Tool, implement docs/Websocket Market Streams.md and docs/Websocket User Data Streams.md, and complete "Protocol Buffers Integration" application.
+User request: Update docs/COPILOT_MEMORY_STORAGE_LOG.md, docs/COPILOT_MEMORY_GUIDE.md, and docs/COPILOT_MEMORY_QUICK_REFERENCE.md to reflect this project, and store project context via store_memory for smoother development.
