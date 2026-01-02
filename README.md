@@ -121,6 +121,41 @@ make test
 | `/account/sub-accounts` | GET | 獲取子帳戶列表 |
 | `/account/sub-account/balance` | GET | 獲取子帳戶餘額 |
 
+### 定時任務端點（Cloud Scheduler）
+
+| 端點 | 方法 | 說明 |
+|------|------|------|
+| `/tasks/15-min-job` | POST | 主要定時任務（成本/損益更新 + 調倉） |
+| `/tasks/rebalance/symmetric` | POST | 對稱調倉（50/50 價值目標） |
+| `/tasks/rebalance/intelligent` | POST | 智能調倉（MA 信號 + 倉位管理） |
+| `/tasks/sync-market` | POST | 同步市場數據到 Redis |
+| `/tasks/sync-account` | POST | 同步帳戶數據到 Redis |
+| `/tasks/sync-trades` | POST | 同步交易記錄到 Redis |
+
+#### 智能調倉策略
+
+**`/tasks/rebalance/intelligent`** 實現了增強的調倉策略：
+
+**特點**:
+- ✅ MA 交叉信號檢測（MA_7 vs MA_25）
+- ✅ 成本基礎驗證（低買高賣）
+- ✅ 倉位分層管理（70% 核心，20% 波段，10% 機動）
+
+**買入信號**:
+- 金叉（MA_7 > MA_25）
+- QRL 價值低於目標
+- 當前價格 ≤ 平均成本
+
+**賣出信號**:
+- 死叉（MA_7 < MA_25）
+- QRL 價值高於目標
+- 當前價格 ≥ 平均成本 × 1.03（3% 利潤）
+- 僅交易非核心倉位（保護 70% 核心）
+
+詳細策略說明：
+- [智能調倉公式](./docs/INTELLIGENT_REBALANCE_FORMULAS.md)
+- [智能調倉執行指南](./docs/INTELLIGENT_REBALANCE_EXECUTION_GUIDE.md)
+
 ## 使用範例
 
 ### 1. 檢查服務狀態
