@@ -60,4 +60,14 @@ except Exception as e:
     # Log but don't fail - allows graceful degradation
     logger.warning(f"Failed to load intelligent rebalance router: {e}", exc_info=True)
 
+# Register debug router (diagnostic endpoints)
+try:
+    from src.app.interfaces.tasks.debug_rebalance import router as debug_router
+
+    router.include_router(debug_router)
+    logger.info("Successfully registered debug router")
+except Exception as e:
+    # Log but don't fail - allows graceful degradation
+    logger.warning(f"Failed to load debug router: {e}", exc_info=True)
+
 __all__ = ["router"]
