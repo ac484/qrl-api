@@ -122,21 +122,6 @@ from src.app.interfaces import register_all_routers  # noqa: E402
 # Register all routers via centralized registry
 register_all_routers(app)
 
-# OLD REGISTRATION (kept as fallback reference):
-# from src.app.interfaces.http.status import router as status_router
-# from src.app.interfaces.http.market import router as market_router
-# from src.app.interfaces.http.account import router as account_router
-# from src.app.interfaces.http.bot import router as bot_router
-# from src.app.interfaces.http.sub_account import router as sub_account_router
-# from src.app.interfaces.tasks.router import router as cloud_tasks_router
-#
-# app.include_router(status_router)          # /, /dashboard, /health, /status
-# app.include_router(market_router)          # /market/*
-# app.include_router(account_router)         # /account/balance, /account/balance/redis
-# app.include_router(bot_router)             # /bot/control, /bot/execute
-# app.include_router(sub_account_router)     # /account/sub-account/*
-# app.include_router(cloud_tasks_router)     # /tasks/*
-
 
 # ===== Global Exception Handler =====
 

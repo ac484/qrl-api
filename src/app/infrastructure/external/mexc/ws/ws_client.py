@@ -24,7 +24,7 @@ from src.app.infrastructure.external.mexc.websocket.market_streams import (
     trade_stream,
     decode_push_data,
 )
-from src.app.infrastructure.external.mexc.ws_core import MEXCWebSocketClient, WS_BASE
+from src.app.infrastructure.external.mexc.ws.ws_core import MEXCWebSocketClient, WS_BASE
 
 
 async def _keepalive_listen_key(
