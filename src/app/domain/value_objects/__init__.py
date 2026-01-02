@@ -50,6 +50,7 @@ This reduces cognitive load by making the domain model more explicit and type-sa
 from src.app.domain.value_objects.balance import Balance
 from src.app.domain.value_objects.order_side import OrderSide, OrderSideEnum
 from src.app.domain.value_objects.order_status import OrderStatus, OrderStatusEnum
+from src.app.domain.value_objects.percentage import Percentage
 from src.app.domain.value_objects.price import Price
 from src.app.domain.value_objects.quantity import Quantity
 from src.app.domain.value_objects.symbol import Symbol
@@ -63,4 +64,5 @@ __all__ = [
     "OrderSideEnum",
     "OrderStatus",
     "OrderStatusEnum",
+    "Percentage",
 ]
