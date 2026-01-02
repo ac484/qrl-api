@@ -18,10 +18,7 @@ from src.app.application.trading.services.trading.rebalance_service import (
     RebalanceService,
 )
 from src.app.infrastructure.external import mexc_client, redis_client, QRL_USDT_SYMBOL
-from src.app.interfaces.tasks.shared import (
-    ensure_redis_connected,
-    require_scheduler_auth,
-)
+from src.app.interfaces.tasks.shared import require_scheduler_auth
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +56,20 @@ async def task_15_min_job(
     auth_method = require_scheduler_auth(x_cloudscheduler, authorization)
     logger.info(f"[15-min-job] Started - authenticated via {auth_method}")
 
-    # Step 2: Ensure Redis connection
-    await ensure_redis_connected(redis_client)
+    # Step 2: Optional Redis connection (graceful degradation if Redis not configured)
+    redis_available = False
+    if redis_client and not redis_client.connected:
+        try:
+            await redis_client.connect()
+            redis_available = redis_client.connected
+            logger.info("[15-min-job] Redis connection established")
+        except Exception as exc:
+            logger.warning(
+                f"[15-min-job] Redis unavailable (continuing without caching): {exc}"
+            )
+            redis_available = False
+    elif redis_client and redis_client.connected:
+        redis_available = True
 
     try:
         # Step 3: Cost/PnL update (placeholder for future implementation)
@@ -155,6 +164,7 @@ async def task_15_min_job(
             "status": "success",
             "task": "15-min-job",
             "auth": auth_method,
+            "redis_available": redis_available,
             "timestamp": end_time.isoformat(),
             "duration_ms": duration_ms,
             "cost_update": cost_update_result,
