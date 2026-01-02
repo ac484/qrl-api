@@ -11,7 +11,8 @@ from typing import Optional
 from fastapi import Header, HTTPException, params
 
 from src.app.infrastructure.config import config
-from src.app.infrastructure.external import mexc_client
+from src.app.infrastructure.external import mexc_client, redis_client
+from src.app.application.account.balance_service import BalanceService
 
 logger = logging.getLogger(__name__)
 
@@ -44,31 +45,34 @@ async def task_sync_balance(
             )
             return {"status": "skipped", "reason": "API keys not configured"}
 
-        async with mexc_client:
-            account_info = await mexc_client.get_account_info()
-            qrl_balance = 0.0
-            usdt_balance = 0.0
-            all_balances = {}
+        # Use encapsulated BalanceService instead of direct API calls
+        balance_service = BalanceService(mexc_client, redis_client)
+        snapshot = await balance_service.get_account_balance()
 
-            for balance in account_info.get("balances", []):
-                asset = balance.get("asset")
-                free = float(balance.get("free", 0))
-                locked = float(balance.get("locked", 0))
+        # Extract QRL and USDT balances from snapshot
+        qrl_data = snapshot.get("balances", {}).get("QRL", {})
+        usdt_data = snapshot.get("balances", {}).get("USDT", {})
 
-                if free > 0 or locked > 0:
-                    all_balances[asset] = {
-                        "free": str(free),
-                        "locked": str(locked),
-                        "total": str(free + locked),
-                    }
+        qrl_balance = float(qrl_data.get("free", 0))
+        usdt_balance = float(usdt_data.get("free", 0))
 
-                if asset == "QRL":
-                    qrl_balance = free
-                elif asset == "USDT":
-                    usdt_balance = free
+        # Count all non-zero assets from raw account info
+        all_balances = {}
+        raw_account = snapshot.get("raw", {})
+        for balance in raw_account.get("balances", []):
+            asset = balance.get("asset")
+            free = float(balance.get("free", 0))
+            locked = float(balance.get("locked", 0))
+
+            if free > 0 or locked > 0:
+                all_balances[asset] = {
+                    "free": str(free),
+                    "locked": str(locked),
+                    "total": str(free + locked),
+                }
 
         logger.info(
-            "[Cloud Task] Balance synced (Direct API) - "
+            "[Cloud Task] Balance synced (via BalanceService) - "
             f"QRL: {qrl_balance:.2f}, USDT: {usdt_balance:.2f}, "
             f"Total assets: {len(all_balances)}"
         )
