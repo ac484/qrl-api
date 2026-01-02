@@ -9,7 +9,7 @@ scheduled tasks.
 import logging
 from typing import Optional
 
-from fastapi import Header, HTTPException
+from fastapi import HTTPException
 
 from src.app.infrastructure.external import RedisClient
 
