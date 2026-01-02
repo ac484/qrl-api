@@ -20,6 +20,10 @@ from typing import Any, Dict, Optional
 from src.app.infrastructure.external import QRL_USDT_SYMBOL
 from src.app.infrastructure.utils import safe_float
 
+# Import extracted modules
+from ..indicators import MACalculator
+from ..position import CostTracker
+
 
 class IntelligentRebalanceService:
     """
@@ -56,6 +60,10 @@ class IntelligentRebalanceService:
         self.active_ratio = active_ratio
         self.ma_short_period = ma_short_period
         self.ma_long_period = ma_long_period
+        
+        # Initialize extracted components
+        self.ma_calculator = MACalculator(ma_short_period, ma_long_period)
+        self.cost_tracker = CostTracker(redis_client, default_cost=0.05)
 
     async def generate_plan(
         self, snapshot: Optional[Dict[str, Any]] = None
@@ -89,59 +97,23 @@ class IntelligentRebalanceService:
         """
         Calculate MA_7 and MA_25 from recent price data.
 
-        Uses MEXC klines API to get historical prices.
+        Uses MEXC klines API to get historical prices and delegates
+        calculation to MACalculator component.
+        
         Returns MA values and signal strength.
         """
         try:
             # Get recent klines for MA calculation
-            # We need at least ma_long_period candles
             klines = await self.mexc.get_klines(
                 symbol=QRL_USDT_SYMBOL,
                 interval="5m",  # 5-minute candles
                 limit=self.ma_long_period,
             )
 
-            if not klines or len(klines) < self.ma_long_period:
-                return {
-                    "ma_short": 0.0,
-                    "ma_long": 0.0,
-                    "signal": "UNKNOWN",
-                    "signal_strength": 0.0,
-                    "error": "Insufficient price data",
-                }
-
-            # Extract closing prices (index 4 in kline data)
-            # Kline format: [timestamp, open, high, low, close, volume, ...]
-            prices = [safe_float(k[4]) for k in klines]
-
-            # Calculate MA_short (most recent N candles)
-            recent_prices_short = prices[-self.ma_short_period :]
-            ma_short = sum(recent_prices_short) / len(recent_prices_short)
-
-            # Calculate MA_long (most recent N candles)
-            recent_prices_long = prices[-self.ma_long_period :]
-            ma_long = sum(recent_prices_long) / len(recent_prices_long)
-
-            # Calculate signal strength (percentage difference)
-            signal_strength = (
-                (ma_short - ma_long) / ma_long * 100 if ma_long > 0 else 0.0
+            # Delegate MA calculation to extracted component
+            return await self.ma_calculator.calculate_from_klines(
+                klines, self.mexc, QRL_USDT_SYMBOL
             )
-
-            # Determine signal direction
-            if ma_short > ma_long:
-                signal = "GOLDEN_CROSS"  # Bullish
-            elif ma_short < ma_long:
-                signal = "DEATH_CROSS"  # Bearish
-            else:
-                signal = "NEUTRAL"
-
-            return {
-                "ma_short": ma_short,
-                "ma_long": ma_long,
-                "signal": signal,
-                "signal_strength": signal_strength,
-                "prices_count": len(prices),
-            }
 
         except Exception as e:
             return {
@@ -311,23 +283,9 @@ class IntelligentRebalanceService:
         """
         Get current QRL cost basis from Redis or estimate from position data.
 
-        If no stored cost basis exists, estimate based on current holdings.
+        Delegates to CostTracker component for cost basis retrieval.
         """
-        if not self.redis:
-            return 0.05  # Default fallback estimate
-
-        try:
-            # Try to get stored cost basis
-            if hasattr(self.redis, "get_position_cost_basis"):
-                cost_basis = await self.redis.get_position_cost_basis("QRL")
-                if cost_basis:
-                    return safe_float(cost_basis)
-
-            # Fallback to default estimate
-            return 0.05
-
-        except Exception:
-            return 0.05  # Fallback on error
+        return await self.cost_tracker.get_cost_basis("QRL", qrl_total)
 
     async def _record_plan(self, plan: Dict[str, Any]) -> None:
         """Record plan to Redis for audit and monitoring."""
