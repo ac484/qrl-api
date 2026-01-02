@@ -1,1 +1,0 @@
-User request: Update docs/COPILOT_MEMORY_STORAGE_LOG.md, docs/COPILOT_MEMORY_GUIDE.md, and docs/COPILOT_MEMORY_QUICK_REFERENCE.md to reflect this project, and store project context via store_memory for smoother development.
