@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from contextlib import suppress
 
 import websockets
@@ -12,7 +13,14 @@ WS_BASE = "wss://wbs-api.mexc.com/ws"
 
 
 class MEXCWebSocketClient:
-    """Websocket client with SUB/UNSUB and explicit PING/PONG."""
+    """
+    Websocket client with SUB/UNSUB and explicit PING/PONG.
+    
+    Implements data flow heartbeat pattern from ✨.md:
+    - Tracks last_message_at for data flow monitoring
+    - is_alive() checks if data is flowing (not just ping/pong)
+    - Heartbeat = "data is progressing" not "WS is connected"
+    """
 
     def __init__(
         self,
@@ -30,6 +38,7 @@ class MEXCWebSocketClient:
         self._close_timeout = close_timeout
         self._ws = None
         self._ping_task = None
+        self.last_message_at = time.time()  # Track data flow for heartbeat
 
     async def __aenter__(self):
         self._ws = await websockets.connect(
@@ -113,11 +122,21 @@ class MEXCWebSocketClient:
             raise RuntimeError("WebSocket connection is not open")
         while True:
             raw = await self._ws.recv()
+            self.last_message_at = time.time()  # Update on every message
             parsed = self._parse(raw)
             if self._is_ping(parsed):
                 await self.send_pong()
                 return {"type": "ping"}
             return parsed
+
+    def is_alive(self) -> bool:
+        """
+        Check if websocket is alive based on data flow.
+        
+        From ✨.md: "Real heartbeat is 'is data progressing'"
+        Returns False if no messages received within heartbeat timeout.
+        """
+        return time.time() - self.last_message_at < self._heartbeat
 
     def __aiter__(self):
         return self
