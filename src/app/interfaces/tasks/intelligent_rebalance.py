@@ -22,10 +22,7 @@ from src.app.application.trading.services.trading.intelligent_rebalance_service 
     IntelligentRebalanceService,
 )
 from src.app.infrastructure.external import mexc_client, redis_client, QRL_USDT_SYMBOL
-from src.app.interfaces.tasks.shared import (
-    ensure_redis_connected,
-    require_scheduler_auth,
-)
+from src.app.interfaces.tasks.shared import require_scheduler_auth
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +70,20 @@ async def task_rebalance_intelligent(
     auth_method = require_scheduler_auth(x_cloudscheduler, authorization)
     logger.info(f"[rebalance-intelligent] Authenticated via {auth_method}")
 
-    # Step 2: Ensure Redis connection
-    await ensure_redis_connected(redis_client)
+    # Step 2: Optional Redis connection (graceful degradation if Redis not configured)
+    redis_available = False
+    if redis_client and not redis_client.connected:
+        try:
+            await redis_client.connect()
+            redis_available = redis_client.connected
+            logger.info("[rebalance-intelligent] Redis connection established")
+        except Exception as exc:
+            logger.warning(
+                f"[rebalance-intelligent] Redis unavailable (continuing without caching): {exc}"
+            )
+            redis_available = False
+    elif redis_client and redis_client.connected:
+        redis_available = True
 
     try:
         # Step 3: Generate intelligent rebalance plan
@@ -138,6 +147,7 @@ async def task_rebalance_intelligent(
             "status": "success",
             "task": "rebalance-intelligent",
             "auth": auth_method,
+            "redis_available": redis_available,
             "plan": plan,
             "order": order_result,
         }
