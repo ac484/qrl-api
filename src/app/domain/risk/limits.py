@@ -1,7 +1,7 @@
 """
 Risk management domain logic (refactored).
 
-Uses modular validators for better code organization and testability.
+Uses modular validators and Value Objects for type-safe risk management.
 
 Mathematical Formulas:
 =====================
@@ -14,21 +14,21 @@ Trade Interval:
     Allowed = (Elapsed_Time ≥ MIN_TRADE_INTERVAL)
 
 Core Position Protection:
-    Core_QRL = Total_QRL × Core_Position_PCT
-    Tradeable_QRL = Total_QRL - Core_QRL
-    Allowed = (Tradeable_QRL > 0) for sell operations
+    Core_Quantity = Total_Quantity × Core_Position_PCT
+    Tradeable_Quantity = Total_Quantity - Core_Quantity
+    Allowed = (Tradeable_Quantity > 0) for sell operations
 
 USDT Reserve:
-    Min_Reserve = Total_Value × USDT_Reserve_PCT
-    Available_USDT = USDT_Balance - Min_Reserve
+    Available_USDT = USDT_Balance
     Allowed = (Available_USDT > 0) for buy operations
 
 Reference: docs/STRATEGY_DESIGN_FORMULAS.md (Section 6: Risk Control)
 """
 
-from typing import Any, Dict
-
 from src.app.infrastructure.config.env import config
+from src.app.domain.value_objects import Percentage, Quantity
+from src.app.domain.models import Position
+from src.app.domain.risk.results import RiskCheckResult
 from src.app.domain.risk.validators.trade_frequency_validator import (
     TradeFrequencyValidator,
 )
@@ -55,7 +55,7 @@ class RiskManager:
     -------------
     - MAX_DAILY_TRADES: Default 5 trades per day
     - MIN_TRADE_INTERVAL: Default 300 seconds (5 minutes)
-    - CORE_POSITION_PCT: Default 0.70 (70% protected)
+    - CORE_POSITION_PCT: Default 0.70 (70% protected) - Percentage VO
     - USDT_RESERVE_PCT: Default 0.20 (20% reserved)
 
     For detailed formulas and examples, see:
@@ -67,7 +67,7 @@ class RiskManager:
         self,
         max_daily_trades: int | None = None,
         min_trade_interval: int | None = None,
-        core_position_pct: float | None = None,
+        core_position_pct: Percentage | None = None,
     ) -> None:
         """
         Initialize risk manager with configurable limits
@@ -75,13 +75,13 @@ class RiskManager:
         Args:
             max_daily_trades: Maximum trades per day (default: 5 from config)
             min_trade_interval: Minimum seconds between trades (default: 300 from config)
-            core_position_pct: Core position percentage to protect (default: 0.70 from config)
+            core_position_pct: Core position percentage to protect (Percentage VO, default: 0.70 from config)
         """
         self.max_daily_trades = max_daily_trades or config.MAX_DAILY_TRADES
         self.min_trade_interval = min_trade_interval or config.MIN_TRADE_INTERVAL
-        self.core_position_pct = core_position_pct or config.CORE_POSITION_PCT
+        self.core_position_pct = core_position_pct or Percentage.from_float(config.CORE_POSITION_PCT)
 
-        # Initialize validators
+        # Initialize validators with Value Objects
         self.frequency_validator = TradeFrequencyValidator(
             max_daily_trades=self.max_daily_trades,
             min_trade_interval=self.min_trade_interval,
@@ -90,7 +90,7 @@ class RiskManager:
             core_position_pct=self.core_position_pct
         )
 
-    def check_daily_limit(self, daily_trades: int) -> Dict[str, Any]:
+    def check_daily_limit(self, daily_trades: int) -> RiskCheckResult:
         """
         Check if daily trade limit has been reached
 
@@ -100,11 +100,15 @@ class RiskManager:
             daily_trades: Number of trades completed today
 
         Returns:
-            Dict with allowed status and reason
+            RiskCheckResult with allowed status and reason
         """
-        return self.frequency_validator.check_daily_limit(daily_trades)
+        result = self.frequency_validator.check_daily_limit(daily_trades)
+        return RiskCheckResult(
+            allowed=result["allowed"],
+            reason=result["reason"],
+        )
 
-    def check_trade_interval(self, last_trade_time: int) -> Dict[str, Any]:
+    def check_trade_interval(self, last_trade_time: int) -> RiskCheckResult:
         """
         Check if minimum time has elapsed since last trade
 
@@ -114,46 +118,59 @@ class RiskManager:
             last_trade_time: Unix timestamp of last trade (seconds)
 
         Returns:
-            Dict with allowed status and reason
+            RiskCheckResult with allowed status and reason
         """
-        return self.frequency_validator.check_trade_interval(last_trade_time)
+        result = self.frequency_validator.check_trade_interval(last_trade_time)
+        return RiskCheckResult(
+            allowed=result["allowed"],
+            reason=result["reason"],
+        )
 
-    def check_sell_protection(self, position_layers: Dict[str, Any]) -> Dict[str, Any]:
+    def check_sell_protection(self, position: Position) -> RiskCheckResult:
         """
         Check if sell would violate core position protection
 
         Delegates to PositionValidator.
 
         Args:
-            position_layers: Dict containing total_qrl and core_qrl
+            position: Position entity to validate
 
         Returns:
-            Dict with allowed status, tradeable_qrl, and reason
+            RiskCheckResult with allowed status, tradeable quantity, and reason
         """
-        return self.position_validator.check_sell_protection(position_layers)
+        result = self.position_validator.check_sell_protection(position)
+        return RiskCheckResult(
+            allowed=result.allowed,
+            reason=result.reason,
+            tradeable_quantity=result.tradeable_quantity,
+        )
 
-    def check_buy_protection(self, usdt_balance: float) -> Dict[str, Any]:
+    def check_buy_protection(self, usdt_balance: Quantity) -> RiskCheckResult:
         """
         Check if sufficient USDT exists for buying
 
         Delegates to PositionValidator.
 
         Args:
-            usdt_balance: Current USDT balance
+            usdt_balance: Current USDT balance (Quantity VO)
 
         Returns:
-            Dict with allowed status and reason
+            RiskCheckResult with allowed status and reason
         """
-        return self.position_validator.check_buy_protection(usdt_balance)
+        result = self.position_validator.check_buy_protection(usdt_balance)
+        return RiskCheckResult(
+            allowed=result.allowed,
+            reason=result.reason,
+        )
 
     def check_all_risks(
         self,
         signal: str,
         daily_trades: int,
         last_trade_time: int,
-        position_layers: Dict[str, Any],
-        usdt_balance: float,
-    ) -> Dict[str, Any]:
+        position: Position | None,
+        usdt_balance: Quantity,
+    ) -> RiskCheckResult:
         """
         Execute all risk checks in sequence
 
@@ -161,7 +178,7 @@ class RiskManager:
         ----------
         1. Daily Limit → Stop if reached
         2. Trade Interval → Stop if too soon
-        3. For SELL: Position Protection → Stop if no tradeable QRL
+        3. For SELL: Position Protection → Stop if no tradeable quantity
         4. For BUY: USDT Check → Stop if insufficient balance
 
         Formula Summary:
@@ -170,7 +187,7 @@ class RiskManager:
             (Daily_Trades < MAX) AND
             (Time_Elapsed ≥ MIN_INTERVAL) AND
             (
-                (Signal == "SELL" AND Tradeable_QRL > 0) OR
+                (Signal == "SELL" AND Tradeable_Quantity > 0) OR
                 (Signal == "BUY" AND USDT_Balance > 0)
             )
 
@@ -179,37 +196,37 @@ class RiskManager:
         Signal: "BUY"
         Daily_Trades: 3 < 5 ✓
         Time_Elapsed: 400s ≥ 300s ✓
-        USDT_Balance: 250 > 0 ✓
+        USDT_Balance: Quantity(250, "USDT") > 0 ✓
 
-        Result: {
-            "allowed": True,
-            "reason": "All risk checks passed",
-            "daily_trades": 3
-        }
+        Result: RiskCheckResult(
+            allowed=True,
+            reason="All risk checks passed",
+            daily_trades=3
+        )
 
         Example - Daily Limit Hit:
         -------------------------
         Signal: "SELL"
         Daily_Trades: 5 ≥ 5 ❌
 
-        Result: {
-            "allowed": False,
-            "reason": "Daily trade limit reached (5/5)"
-        }
+        Result: RiskCheckResult(
+            allowed=False,
+            reason="Daily trade limit reached (5/5)"
+        )
         (No further checks executed)
 
         Args:
             signal: Trading signal ("BUY", "SELL", or "HOLD")
             daily_trades: Number of trades today
             last_trade_time: Timestamp of last trade
-            position_layers: Position breakdown data
-            usdt_balance: Current USDT balance
+            position: Position entity (may be None for first buy)
+            usdt_balance: Current USDT balance (Quantity VO)
 
         Returns:
-            Dict with:
+            RiskCheckResult with:
                 - allowed: bool (True if all checks pass)
                 - reason: str (explanation)
-                - tradeable_qrl: float (only for SELL, if allowed)
+                - tradeable_quantity: Quantity (only for SELL, if allowed)
                 - daily_trades: int (current count, if allowed)
 
         Note:
@@ -224,30 +241,42 @@ class RiskManager:
         """
         # Check 1: Daily trade limit
         limit_check = self.check_daily_limit(daily_trades)
-        if not limit_check["allowed"]:
+        if not limit_check.allowed:
             return limit_check
 
         # Check 2: Trade interval
         interval_check = self.check_trade_interval(last_trade_time)
-        if not interval_check["allowed"]:
+        if not interval_check.allowed:
             return interval_check
 
         # Check 3: Signal-specific protections
         if signal == "SELL":
-            protection = self.check_sell_protection(position_layers)
-            if not protection["allowed"]:
+            if not position:
+                return RiskCheckResult(
+                    allowed=False,
+                    reason="No position to sell"
+                )
+            protection = self.check_sell_protection(position)
+            if not protection.allowed:
                 return protection
+            # Return with tradeable quantity
+            return RiskCheckResult(
+                allowed=True,
+                reason="All risk checks passed",
+                tradeable_quantity=protection.tradeable_quantity,
+                daily_trades=daily_trades,
+            )
         elif signal == "BUY":
             protection = self.check_buy_protection(usdt_balance)
-            if not protection["allowed"]:
+            if not protection.allowed:
                 return protection
 
         # All checks passed
-        return {
-            "allowed": True,
-            "reason": "All risk checks passed",
-            "daily_trades": daily_trades,
-        }
+        return RiskCheckResult(
+            allowed=True,
+            reason="All risk checks passed",
+            daily_trades=daily_trades,
+        )
 
 
 __all__ = ["RiskManager"]
