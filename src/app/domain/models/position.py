@@ -28,7 +28,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from src.app.domain.value_objects import Price, Quantity, Symbol
+from src.app.domain.value_objects import Percentage, Price, Quantity, Symbol
 
 
 @dataclass(slots=True)
@@ -215,6 +215,41 @@ class Position:
     def has_holdings(self) -> bool:
         """Check if position has any holdings."""
         return self.total_quantity.value > Decimal("0")
+    
+    def get_tradeable_quantity(self, core_position_pct: Percentage) -> Quantity:
+        """Calculate tradeable quantity after protecting core position.
+        
+        Formula: tradeable = total - (total * core_pct)
+        
+        This implements the core position protection rule: a percentage of the
+        position is reserved as "core" and cannot be sold. Only the remaining
+        "tradeable" portion can be sold.
+        
+        Args:
+            core_position_pct: Percentage to protect as core (0-1 range)
+        
+        Returns:
+            Tradeable quantity (may be zero if all is protected)
+        
+        Example:
+            >>> position = Position(
+            ...     symbol=Symbol("QRLUSDT"),
+            ...     total_quantity=Quantity.from_float(100.0),
+            ...     average_cost=Price.from_float(100.0, "USDT"),
+            ... )
+            >>> core_pct = Percentage.from_float(0.7)  # 70% protected
+            >>> tradeable = position.get_tradeable_quantity(core_pct)
+            >>> tradeable.value
+            Decimal('30.0')
+        """
+        core_amount = core_position_pct.apply_to(self.total_quantity.value)
+        tradeable_value = self.total_quantity.value - core_amount
+        
+        # Ensure tradeable is never negative
+        if tradeable_value < Decimal("0"):
+            tradeable_value = Decimal("0")
+        
+        return Quantity(tradeable_value)
 
 
 __all__ = ["Position"]
